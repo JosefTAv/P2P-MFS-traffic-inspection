@@ -1,0 +1,9 @@
+[submodule "server/tools/dpdk-stable"]
+	path = server/tools/dpdk-stable
+	url = http://dpdk.org/git/dpdk-stable
+[submodule "server/tools/dma_ip_drivers"]
+	path = server/tools/dma_ip_drivers
+	url = git@github.com:Xilinx/dma_ip_drivers.git
+[submodule "server/tools/pcimem"]
+	path = server/tools/pcimem
+	url = git@github.com:billfarrow/pcimem.git
