@@ -1,6 +1,0 @@
-[submodule "server/src/tools/dpdk-stable"]
-	path = server/src/tools/dpdk-stable
-	url = http://dpdk.org/git/dpdk-stable
-[submodule "server/src/tools/dma_ip_drivers"]
-	path = server/src/tools/dma_ip_drivers
-	url = https://github.com/Xilinx/dma_ip_drivers.git
