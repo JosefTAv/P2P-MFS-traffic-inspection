@@ -51,7 +51,7 @@ echo ""
 # ========================
 cp -r "$QDMA_PATH"/drivers/net/qdma "$DPDK_PATH"/drivers/net/
 cp -r "$QDMA_PATH"/examples/qdma_testapp "$DPDK_PATH"/examples/
-
+sleep 5
 # ========================
 # 4. Build DPDK
 # ========================

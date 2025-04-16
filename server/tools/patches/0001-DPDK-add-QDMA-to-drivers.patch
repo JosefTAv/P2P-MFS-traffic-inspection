@@ -1,7 +1,7 @@
-diff --git a/../dpdk-stable/config/meson.build b/../dpdk-stable/config/meson.build
+diff --git a/config/meson.build b/config/meson.build
 index a9ccd56deb..9118aa6a48 100644
---- a/../dpdk-stable/config/meson.build
-+++ b/../dpdk-stable/config/meson.build
+--- a/config/meson.build
++++ b/config/meson.build
 @@ -342,12 +342,12 @@ foreach arg: warning_flags
  endforeach
 
@@ -17,10 +17,10 @@ index a9ccd56deb..9118aa6a48 100644
  dpdk_conf.set('RTE_DRIVER_MEMPOOL_BUCKET_SIZE_KB', 64)
  dpdk_conf.set('RTE_LIBRTE_DPAA2_USE_PHYS_IOVA', true)
  if dpdk_conf.get('RTE_ARCH_64')
-diff --git a/../dpdk-stable/config/rte_config.h b/../dpdk-stable/config/rte_config.h
+diff --git a/config/rte_config.h b/config/rte_config.h
 index da265d7dd2..94fc263234 100644
---- a/../dpdk-stable/config/rte_config.h
-+++ b/../dpdk-stable/config/rte_config.h
+--- a/config/rte_config.h
++++ b/config/rte_config.h
 @@ -26,6 +26,7 @@
  #define RTE_VER_PREFIX "DPDK"
 
@@ -47,10 +47,10 @@ index da265d7dd2..94fc263234 100644
  #define RTE_ETHDEV_QUEUE_STAT_CNTRS 16 /* max 256 */
  #define RTE_ETHDEV_RXTX_CALLBACKS 1
  #define RTE_MAX_MULTI_HOST_CTRLS 4
-diff --git a/../dpdk-stable/drivers/net/meson.build b/../dpdk-stable/drivers/net/meson.build
+diff --git a/drivers/net/meson.build b/drivers/net/meson.build
 index bd38b533c5..2273733b0d 100644
---- a/../dpdk-stable/drivers/net/meson.build
-+++ b/../dpdk-stable/drivers/net/meson.build
+--- a/drivers/net/meson.build
++++ b/drivers/net/meson.build
 @@ -1,3 +1,4 @@
 +
  # SPDX-License-Identifier: BSD-3-Clause
@@ -64,10 +64,10 @@ index bd38b533c5..2273733b0d 100644
          'mlx4',
          'mlx5',
          'mvneta',
-diff --git a/../dpdk-stable/usertools/dpdk-devbind.py b/../dpdk-stable/usertools/dpdk-devbind.py
+diff --git a/usertools/dpdk-devbind.py b/usertools/dpdk-devbind.py
 index a278f5e7f3..fa1668cdac 100755
---- a/../dpdk-stable/usertools/dpdk-devbind.py
-+++ b/../dpdk-stable/usertools/dpdk-devbind.py
+--- a/usertools/dpdk-devbind.py
++++ b/usertools/dpdk-devbind.py
 @@ -78,7 +78,12 @@
  cnxk_ml = {'Class': '08', 'Vendor': '177d', 'Device': 'a092',
              'SVendor': None, 'SDevice': None}
