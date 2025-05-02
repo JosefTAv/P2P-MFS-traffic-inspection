@@ -34,14 +34,14 @@ pci_dev="/sys/bus/pci/devices/0000"
 sudo "$pcimem" "$pci_dev:"$1/resource2 0x0004 w 0x1;
 
 ### Reinit Onic regs
-sudo "$pcimem" "$pci_dev:"$1/resource2 0x1000 w 0x1;
-sudo "$pcimem" "$pci_dev:"$1/resource2 0x2000 w 0x10001;
+# sudo "$pcimem" "$pci_dev:"$1/resource2 0x1000 w 0x1;
+# sudo "$pcimem" "$pci_dev:"$1/resource2 0x2000 w 0x10001;
 
-sudo "$pcimem" "$pci_dev:"$1/resource2 0x8014 w 0x1;
-sudo "$pcimem" "$pci_dev:"$1/resource2 0x800c w 0x1;
+# sudo "$pcimem" "$pci_dev:"$1/resource2 0x8014 w 0x1;
+# sudo "$pcimem" "$pci_dev:"$1/resource2 0x800c w 0x1;
 
-sudo "$pcimem" "$pci_dev:"$1/resource2 0xc014 w 0x1;
-sudo "$pcimem" "$pci_dev:"$1/resource2 0xc00c w 0x1;
+# sudo "$pcimem" "$pci_dev:"$1/resource2 0xc014 w 0x1;
+# sudo "$pcimem" "$pci_dev:"$1/resource2 0xc00c w 0x1;
 
 # ========================
 # 3. Rebind driver
