@@ -1,0 +1,99 @@
+
+services:
+
+  influxdb:
+    image: influxdb:2
+    container_name: influxdbJo
+    env_file:
+      - docker.env
+    user: ${DOCKER_USER}
+    ports:
+      - "8087:8086"
+    volumes:
+      - ./influxdb/data:/var/lib/influxdb2
+      - ./influxdb/config:/etc/influxdb2
+    networks:
+      - kafka-net
+
+  telegraf:
+    image: telegraf
+    container_name: telegrafJo
+    user: ${DOCKER_USER}
+    volumes:
+      - ./telegrafconf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+    env_file:
+      - docker.env
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+    networks:
+      - kafka-net
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafanaJo
+    ports:
+      - "3004:3000"
+    user: ${DOCKER_USER}
+    depends_on:
+      - influxdb
+    volumes:
+      - ./grafana_data:/var/lib/grafana
+    networks:
+      - kafka-net
+
+  kafka:
+    image: confluentinc/cp-kafka:7.8.0
+    container_name: kafkaJo
+    user: '0'
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+      - "19092:19092"
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_BROKER_ID: 1
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:19092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafkaJo:19092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      KAFKA_LOG_RETENTION_MS: 60000
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      CLUSTER_ID: 'EmptNWtoR4GGWx-BH6nGLQ'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_MIN_INSYNC_REPLICAS: 1
+    volumes:
+      - ./kafka_data:/var/lib/kafka/data
+    networks:
+      - kafka-net
+
+
+  kafka-ui:
+    container_name: kafka-uiJo
+    image: provectuslabs/kafka-ui:latest
+    user: ${DOCKER_USER}
+    ports:
+      - 8081:8080
+    environment:
+      DYNAMIC_CONFIG_ENABLED: 'true'
+    volumes:
+      - ./kafkaui/config.yml:/etc/kafkaui/dynamic_config.yaml
+    networks:
+      - kafka-net
+
+networks:
+  kafka-net:
