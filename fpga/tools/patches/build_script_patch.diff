@@ -1,0 +1,53 @@
+diff --git a/script/build.tcl b/script/build.tcl
+index 6215589..7f9e63d 100644
+--- a/script/build.tcl
++++ b/script/build.tcl
+@@ -67,6 +67,7 @@ set src_dir ${root_dir}/src
+ #   board_repo             Path to the Xilinx board store repository
+ #   board                  Board name
+ #   tag                    Tag to identify the build
++#   build_dir              Directory where the build will be placed
+ #   overwrite              Overwrite existing build results
+ #   rebuild                Update build directory but respect overwrite
+ #   jobs                   Number of jobs for synthesis and implementation
+@@ -97,6 +98,7 @@ array set build_options {
+     -board_repo  ""
+     -board       au250
+     -tag         ""
++    -build_dir   ""
+     -overwrite   0
+     -rebuild     0
+     -jobs        8
+@@ -188,10 +190,12 @@ source ${script_dir}/board_settings/${board}.tcl
+ set top open_nic_shell
+ set build_name ${board}
+ if {![string equal $tag ""]} {
+-    set build_name ${build_name}_${tag}
++    set build_name ${build_dir}/onic_${build_name}_${tag}
++} else {
++    set build_name ${build_dir}/onic_${build_name}
+ }
+ 
+-set build_dir [file normalize ${root_dir}/build/${build_name}]
++set build_dir [file normalize ${root_dir}/${build_name}]
+ if {[file exists $build_dir]} {
+     if {!$rebuild } {
+         puts "Found existing build directory $build_dir"
+@@ -223,7 +227,7 @@ close $fp
+ 
+ # Update the board store
+ if {[string equal $board_repo ""]} {
+-    set_param board.repoPaths "${root_dir}/board_files"    
++    set_param board.repoPaths "${root_dir}/board_files"
+     # xhub::refresh_catalog [xhub::get_xstores xilinx_board_store]
+ } else {
+     set_param board.repoPaths $board_repo
+@@ -356,7 +360,7 @@ set include_dirs [get_property include_dirs [current_fileset]]
+ foreach freq [list 250mhz 322mhz] {
+     set box "box_$freq"
+     set box_plugin ${user_plugin}/${box}
+-    
++
+     if {![file exists $box_plugin] || ![file exists ${user_plugin}/build_${box}.tcl]} {
+         set box_plugin ${plugin_dir}/p2p/${box}
+     }

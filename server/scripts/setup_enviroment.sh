@@ -13,6 +13,12 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PATCHES_PATH="$SCRIPT_DIR/../tools/patches"
 
+print_log() {
+    echo ""
+    echo "@1"
+    echo ""
+}
+
 # ========================
 # 1. Apply patches
 # ========================
@@ -33,18 +39,14 @@ QDMA_PATCH="0002-QDMA-make-Onic-configs.patch"
 cp "$PATCHES_PATH/$QDMA_PATCH" "$QDMA_PATH/"
 cd "$QDMA_PATH" || exit 1
 git apply --verbose "$QDMA_PATCH"
-echo ""
-echo "Finished applying patches to tools"
-echo ""
+print_log "Finished applying patches to tools"
 
 # ========================
 # 2. Add DPDK-kmods
 # ========================
 cd "$DPDK_PATH" || exit 1
 git clone git://dpdk.org/dpdk-kmods
-echo ""
-echo "Added DPDK-kmods"
-echo ""
+print_log "Added DPDK-kmods"
 
 # ========================
 # 3. Add QDMA to DPDK
@@ -61,18 +63,14 @@ cd build
 ninja
 ninja install
 #SKIP ldconfig (not needed for local installs)
-echo ""
-echo "Finished building DPDK"
-echo ""
+print_log "Finished building DPDK"
 
 # ========================
 # 5. Make igb_uio driver
 # ========================
 cd "$DPDK_PATH"/dpdk-kmods/linux/igb_uio || exit 1
 make
-echo ""
-echo "Made igb_uio driver"
-echo ""
+print_log "Made igb_uio driver"
 
 
 # ========================
@@ -81,6 +79,4 @@ echo ""
 PCIMEM_PATH="$SCRIPT_DIR/../tools/pcimem"
 cd "$PCIMEM_PATH"/ || exit 1
 make
-echo ""
-echo "Made pcimem"
-echo ""
+print_log "Made pcimem"

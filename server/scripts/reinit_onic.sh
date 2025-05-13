@@ -18,37 +18,47 @@ fi
 # ========================
 # 1. Unbind OpenNic
 # ========================
-DPDK_PATH="$SCRIPT_DIR/../tools/dpdk-stable"
-for pci_adr in "$@"; do # remove all devices
-    sudo "$DPDK_PATH"/usertools/dpdk-devbind.py -u $pci_adr
-done
+unbind_onic() {
+	DPDK_PATH="$SCRIPT_DIR/../tools/dpdk-stable"
+	for pci_adr in "$@"; do # remove all devices
+		sudo "$DPDK_PATH"/usertools/dpdk-devbind.py -u $pci_adr
+	done
+}
 
 # ========================
 # 2. Write to registers
 # ========================
+setup_onic() {
+	pcimem="$SCRIPT_DIR/../tools/pcimem/pcimem"
 
-pcimem="$SCRIPT_DIR/../tools/pcimem/pcimem"
-pci_dev="/sys/bus/pci/devices/0000"
+	pci_dev="/sys/bus/pci/devices/0000"
 
-## Reset entire system
-sudo "$pcimem" "$pci_dev:"$1/resource2 0x0004 w 0x1;
+	# Reset entire system
+	sudo "$pcimem" "$pci_dev:"$1/resource2 0x0004 w 0x1;
 
-### Reinit Onic regs
-sudo "$pcimem" "$pci_dev:"$1/resource2 0x1000 w 0x1;
-sudo "$pcimem" "$pci_dev:"$1/resource2 0x2000 w 0x10001;
+	## Reinit Onic regs
 
-sudo "$pcimem" "$pci_dev:"$1/resource2 0x8014 w 0x1;
-sudo "$pcimem" "$pci_dev:"$1/resource2 0x800c w 0x1;
+	sudo "$pcimem" "$pci_dev:"$1/resource2 0x1000 w 0x1;
+	sudo "$pcimem" "$pci_dev:"$1/resource2 0x2000 w 0x10001;
 
-sudo "$pcimem" "$pci_dev:"$1/resource2 0xc014 w 0x1;
-sudo "$pcimem" "$pci_dev:"$1/resource2 0xc00c w 0x1;
+	sudo "$pcimem" "$pci_dev:"$1/resource2 0x8014 w 0x1;
+	sudo "$pcimem" "$pci_dev:"$1/resource2 0x800c w 0x1;
+
+	sudo "$pcimem" "$pci_dev:"$1/resource2 0xc014 w 0x1;
+	sudo "$pcimem" "$pci_dev:"$1/resource2 0xc00c w 0x1;
+}
 
 # ========================
 # 3. Rebind driver
 # ========================
+rebind_driver() {
+	for pci_adr in "$@"; do # rebind all devices
+		sudo "$DPDK_PATH"/usertools/dpdk-devbind.py -b vfio-pci $pci_adr
+	done
 
-for pci_adr in "$@"; do # rebind all devices
-    sudo "$DPDK_PATH"/usertools/dpdk-devbind.py -b igb_uio $pci_adr
-done
+	sudo "$DPDK_PATH"/usertools/dpdk-devbind.py -s
+}
 
-sudo "$DPDK_PATH"/usertools/dpdk-devbind.py -s
+unbind_onic $@
+setup_onic $1 #: not needed anymore, done in app on init
+rebind_driver $@

@@ -1,0 +1,5 @@
+/grafana_data/*
+!/grafana_data/.gitkeep
+
+/kafka_data/*
+!/kafka_data/.gitkeep
