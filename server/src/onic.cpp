@@ -20,16 +20,28 @@
 int Onic::ONIC_LOG_TYPE = rte_log_register("Onic");
 
 int Onic::init_hardware(){
+    // Init Queue config regs
+    write_reg(0x1000, 0x1);
+    write_reg(0x2000, 0x00010001);
+
     /* get the number of CMAC instances */
+    while ((read_reg(SYSCFG_OFFSET_SHELL_STATUS) & 0x10) != 0x10);
     int i;
     for (i = 0; i < NB_CMAC; ++i) {
-        int val = read_reg(CMAC_OFFSET_CORE_VERSION(i));
+        int shell_idx = (0x10 << (4*i));
+
+        write_reg(SYSCFG_OFFSET_SHELL_RESET, shell_idx);
+		while ((read_reg(SYSCFG_OFFSET_SHELL_STATUS) & shell_idx) != shell_idx) {
+            rte_delay_ms(CMAC_RESET_WAIT_MS);
+        }
+
+        uint32_t val = read_reg(CMAC_OFFSET_CORE_VERSION(i));
         if (val != ONIC_CMAC_CORE_VERSION)
             break;
         enable_cmac(i);
     }
     onic_log(RTE_LOG_INFO, "Number of CMAC instances enabled = %d\n", i);
-
+    // rte_pmd_qdma_dbg_regdump()
     return 0;
 
 }
@@ -56,22 +68,22 @@ int Onic::enable_cmac(int cmac_id){
 
     write_reg(CMAC_OFFSET_CONF_TX_1(cmac_id), 0x1);
 
-    /* RX flow control */
-    write_reg(CMAC_OFFSET_CONF_RX_FC_CTRL_1(cmac_id), 0x00003DFF);
-    write_reg(CMAC_OFFSET_CONF_RX_FC_CTRL_2(cmac_id), 0x0001C631);
+    // /* RX flow control */
+    // write_reg(CMAC_OFFSET_CONF_RX_FC_CTRL_1(cmac_id), 0x00003DFF);
+    // write_reg(CMAC_OFFSET_CONF_RX_FC_CTRL_2(cmac_id), 0x0001C631);
 
-    /* TX flow control */
-    write_reg(CMAC_OFFSET_CONF_TX_FC_QNTA_1(cmac_id), 0xFFFFFFFF);
-    write_reg(CMAC_OFFSET_CONF_TX_FC_QNTA_2(cmac_id), 0xFFFFFFFF);
-    write_reg(CMAC_OFFSET_CONF_TX_FC_QNTA_3(cmac_id), 0xFFFFFFFF);
-    write_reg(CMAC_OFFSET_CONF_TX_FC_QNTA_4(cmac_id), 0xFFFFFFFF);
-    write_reg(CMAC_OFFSET_CONF_TX_FC_QNTA_5(cmac_id), 0x0000FFFF);
-    write_reg(CMAC_OFFSET_CONF_TX_FC_RFRH_1(cmac_id), 0xFFFFFFFF);
-    write_reg(CMAC_OFFSET_CONF_TX_FC_RFRH_2(cmac_id), 0xFFFFFFFF);
-    write_reg(CMAC_OFFSET_CONF_TX_FC_RFRH_3(cmac_id), 0xFFFFFFFF);
-    write_reg(CMAC_OFFSET_CONF_TX_FC_RFRH_4(cmac_id), 0xFFFFFFFF);
-    write_reg(CMAC_OFFSET_CONF_TX_FC_RFRH_5(cmac_id), 0x0000FFFF);
-    write_reg(CMAC_OFFSET_CONF_TX_FC_CTRL_1(cmac_id), 0x000001FF);
+    // /* TX flow control */
+    // write_reg(CMAC_OFFSET_CONF_TX_FC_QNTA_1(cmac_id), 0xFFFFFFFF);
+    // write_reg(CMAC_OFFSET_CONF_TX_FC_QNTA_2(cmac_id), 0xFFFFFFFF);
+    // write_reg(CMAC_OFFSET_CONF_TX_FC_QNTA_3(cmac_id), 0xFFFFFFFF);
+    // write_reg(CMAC_OFFSET_CONF_TX_FC_QNTA_4(cmac_id), 0xFFFFFFFF);
+    // write_reg(CMAC_OFFSET_CONF_TX_FC_QNTA_5(cmac_id), 0x0000FFFF);
+    // write_reg(CMAC_OFFSET_CONF_TX_FC_RFRH_1(cmac_id), 0xFFFFFFFF);
+    // write_reg(CMAC_OFFSET_CONF_TX_FC_RFRH_2(cmac_id), 0xFFFFFFFF);
+    // write_reg(CMAC_OFFSET_CONF_TX_FC_RFRH_3(cmac_id), 0xFFFFFFFF);
+    // write_reg(CMAC_OFFSET_CONF_TX_FC_RFRH_4(cmac_id), 0xFFFFFFFF);
+    // write_reg(CMAC_OFFSET_CONF_TX_FC_RFRH_5(cmac_id), 0x0000FFFF);
+    // write_reg(CMAC_OFFSET_CONF_TX_FC_CTRL_1(cmac_id), 0x000001FF);
 
     printf("Successfully setup cmac id: %d\n", cmac_id);
     return 0;
@@ -79,6 +91,8 @@ int Onic::enable_cmac(int cmac_id){
 
 CmacStats Onic::get_cmac_stats(int cmac_id){
     CmacStats stats;
+    write_reg(CMAC_OFFSET_TICK(cmac_id), 0b1); // push accunmulated stats to regs
+
     stats.tx_total_pkts = read_reg(CMAC_OFFSET_STAT_TX_TOTAL_PKTS(cmac_id));
     stats.tx_total_good_pkts= read_reg(CMAC_OFFSET_STAT_TX_TOTAL_GOOD_PKTS(cmac_id));
     stats.tx_total_bytes = read_reg(CMAC_OFFSET_STAT_TX_TOTAL_BYTES(cmac_id));
@@ -88,6 +102,8 @@ CmacStats Onic::get_cmac_stats(int cmac_id){
     stats.rx_total_good_pkts= read_reg(CMAC_OFFSET_STAT_RX_TOTAL_GOOD_PKTS(cmac_id));
     stats.rx_total_bytes = read_reg(CMAC_OFFSET_STAT_RX_TOTAL_BYTES(cmac_id));
     stats.rx_total_good_bytes = read_reg(CMAC_OFFSET_STAT_RX_TOTAL_GOOD_BYTES(cmac_id));
+    // onic_log(RTE_LOG_INFO, "Read cmac id %d stats \n", cmac_id);
+
     return stats;
 }
 

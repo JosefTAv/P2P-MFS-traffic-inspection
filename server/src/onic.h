@@ -17,15 +17,44 @@
 #define CMAC_RESET_WAIT_MS			(1)
 
 struct CmacStats{
-    uint32_t tx_total_pkts;
-    uint32_t tx_total_good_pkts;
-    uint32_t tx_total_bytes;
-    uint32_t tx_total_good_bytes;
+    uint32_t tx_total_pkts = 0;
+    uint32_t tx_total_good_pkts = 0;
+    uint32_t tx_total_bytes = 0;
+    uint32_t tx_total_good_bytes = 0;
 
-    uint32_t rx_total_pkts;
-    uint32_t rx_total_good_pkts;
-    uint32_t rx_total_bytes;
-    uint32_t rx_total_good_bytes;
+    uint32_t rx_total_pkts = 0;
+    uint32_t rx_total_good_pkts = 0;
+    uint32_t rx_total_bytes = 0;
+    uint32_t rx_total_good_bytes = 0;
+
+    void print() const{
+        #define PRINT_FIELD(field) \
+            printf("(CMAC) %-25s %10u\n", #field, field);
+
+        PRINT_FIELD(tx_total_pkts);
+        PRINT_FIELD(tx_total_good_pkts);
+        PRINT_FIELD(tx_total_bytes);
+        PRINT_FIELD(tx_total_good_bytes);
+
+        PRINT_FIELD(rx_total_pkts);
+        PRINT_FIELD(rx_total_good_pkts);
+        PRINT_FIELD(rx_total_bytes);
+        PRINT_FIELD(rx_total_good_bytes);
+        printf("\n");
+        #undef PRINT_FIELD  // Clean up macro after use
+    };
+
+    void add(const CmacStats& other) {
+        tx_total_pkts += other.tx_total_pkts;
+        tx_total_good_pkts += other.tx_total_good_pkts;
+        tx_total_bytes += other.tx_total_bytes;
+        tx_total_good_bytes += other.tx_total_good_bytes;
+
+        rx_total_pkts += other.rx_total_pkts;
+        rx_total_good_pkts += other.rx_total_good_pkts;
+        rx_total_bytes += other.rx_total_bytes;
+        rx_total_good_bytes += other.rx_total_good_bytes;
+    }
 };
 
 class Onic {
@@ -59,13 +88,16 @@ class Onic {
             for(int i=0; i<nb_ports; i++) {
                 new (&ports[i]) OnicPort(portInfos[i], port_ids[i]);
             }
-            printf("Onic constr %d\n");
+
             this->config_port_id = (config_port_id == -1) ? port_ids[0] : config_port_id;
             this->axil_bar_id = (axil_bar_id == -1) ? ports[0].get_pinfo().user_bar_idx : axil_bar_id;
             this->RS_FEC = RS_FEC;
             init_hardware();
         };
-        ~Onic(){ printf("Onic deconstr\n"); };
+        ~Onic(){
+            onic_log(RTE_LOG_INFO, "Reset Onic\n");
+            write_reg(SYSCFG_OFFSET_SYSTEM_RESET, 0x1);// Global reset
+         };
 
         // Base functions
         uint32_t read_reg(uint32_t offset) const{

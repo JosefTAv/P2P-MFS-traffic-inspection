@@ -83,7 +83,7 @@ LDFLAGS += $(shell $(PKGCONF) --libs libdpdk)
 LDFLAGS += -L$(RTE_SDK)/$(RTE_TARGET)/lib -lrte_net_qdma
 
 # for shared library builds, we need to explicitly link these PMDs
-LDFLAGS_SHARED += -lrte_net_qdma
+LDFLAGS_SHARED += -lrte_net_qdma -lrdkafka
 
 build/$(APP)-shared: $(SRCS-y) Makefile $(PC_FILE) | build
 	$(CXX) $(CFLAGS) $(CXXFLAGS) $(SRCS-y) -o $@ $(LDFLAGS) $(LDFLAGS_SHARED)

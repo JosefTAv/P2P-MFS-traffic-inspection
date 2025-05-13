@@ -7,3 +7,6 @@
 [submodule "server/tools/pcimem"]
 	path = server/tools/pcimem
 	url = git@github.com:billfarrow/pcimem.git
+[submodule "fpga/tools/open-nic-shell"]
+	path = fpga/tools/open-nic-shell
+	url = git@github.com:Xilinx/open-nic-shell.git

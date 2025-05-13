@@ -33,9 +33,9 @@ services:
   grafana:
     image: grafana/grafana
     container_name: grafanaJo
+    user: ${USER}
     ports:
       - "3004:3000"
-    user: ${DOCKER_USER}
     depends_on:
       - influxdb
     volumes:
@@ -46,7 +46,7 @@ services:
   kafka:
     image: confluentinc/cp-kafka:7.8.0
     container_name: kafkaJo
-    user: '0'
+    user: ${USER}
     ports:
       - "9092:9092"
       - "9093:9093"
