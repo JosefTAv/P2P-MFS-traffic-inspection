@@ -22,4 +22,3 @@
 *.exe
 *.out
 *.app
-/server/src/build

@@ -1,0 +1,30 @@
+#Thesis repo stuff
+P2P_DIR="$(cd "$(dirname ${BASH_SOURCE[0]})" && pwd)"
+export P2P_DIR
+
+# Export useful stuff for project
+export PKG_CONFIG_PATH=$P2P_DIR/server/tools/dpdk-stable/lib/x86_64-linux-gnu/pkgconfig
+export LD_LIBRARY_PATH=$P2P_DIR/server/tools/dpdk-stable/lib/x86_64-linux-gnu
+PKG_CONFIG_PATH=$P2P_DIR/server/tools/dpdk23.11-patched/lib/x86_64-linux-gnu/pkgconfig
+export PATH="$P2P_DIR/server/tools/pcimem:$PATH"
+export PATH="$P2P_DIR/server/scripts/:$PATH"
+
+# PATH stuff
+export XAUTHORITY=$HOME/.Xauthority
+source /tools/Xilinx/Vivado/2023.1/settings64.sh
+source /tools/Xilinx/Vitis/2023.1/settings64.sh
+export TERM=xterm
+
+# Aliases
+alias lsXilinx='sudo lspci -vvvd 10ee:'
+alias rescan='sudo echo 1 | sudo tee "/sys/bus/pci/rescan"'
+alias virt20='ssh -Y user@192.168.122.157'
+alias virt22='ssh -Y user@192.168.122.52'
+
+# Go to directory
+alias scripts='cd $P2P_DIR/server/scripts'
+alias src='cd $P2P_DIR/server/src'
+alias dpdk='cd $P2P_DIR/dpdk-stable'
+
+# Run testpmd
+alias testpmd="$P2P_DIR/server/tools/dpdk-stable/build/app/dpdk-testpmd --file-prefix josef -a c1:00.0 -a 81:00.0 -n 3 -- -i"
