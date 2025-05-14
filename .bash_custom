@@ -5,7 +5,6 @@ export P2P_DIR
 # Export useful stuff for project
 export PKG_CONFIG_PATH=$P2P_DIR/server/tools/dpdk-stable/lib/x86_64-linux-gnu/pkgconfig
 export LD_LIBRARY_PATH=$P2P_DIR/server/tools/dpdk-stable/lib/x86_64-linux-gnu
-PKG_CONFIG_PATH=$P2P_DIR/server/tools/dpdk23.11-patched/lib/x86_64-linux-gnu/pkgconfig
 export PATH="$P2P_DIR/server/tools/pcimem:$PATH"
 export PATH="$P2P_DIR/server/scripts/:$PATH"
 

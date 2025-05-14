@@ -1,12 +1,12 @@
 # builds
 /src/build
 
-# Only keep necessary folders/configs for tools
-/tools/*
-!/tools/patches/
-!/tools/grafana_data/.gitkeep
-!/tools/kafka_data/.gitkeep
-!/tools/influxdb/config/.gitkeep
-!/tools/influxdb/data/.gitkeep
-!/tools/kafkaui/config.yml
-!/tools/telegrafconf/telegraf.conf
+# Only keep necessary folders/configs for containers
+/tools/data_containers/*
+!/tools/data_containers/patches/
+!/tools/data_containers/grafana_data/.gitkeep
+!/tools/data_containers/kafka_data/.gitkeep
+!/tools/data_containers/influxdb/config/.gitkeep
+!/tools/data_containers/influxdb/data/.gitkeep
+!/tools/data_containers/kafkaui/config.yml
+!/tools/data_containers/telegrafconf/telegraf.conf

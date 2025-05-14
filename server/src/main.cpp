@@ -131,7 +131,7 @@ int main(int argc, char* argv[]){
 	******************************************************************************************************************/
 	const char *topic = "telegraf";
     const char *payload = "TestTable,tag1=test ti=50,t2=\"1\"\n";
-    // produce_kafka(topic, payload, strlen(payload), NULL, 0);
+    produce_kafka(topic, payload, strlen(payload), NULL, 0);
 	rte_delay_ms(1000);
 
     return 0;
@@ -188,7 +188,7 @@ void produce_kafka(const char *topic, const char *payload, size_t payload_len, c
     }
 
     // 3. Set brokers (comma-separated list)
-    if (rd_kafka_conf_set(conf, "bootstrap.servers", "localhost:9092,localhost:19092", errstr, sizeof(errstr)) != RD_KAFKA_CONF_OK) {
+    if (rd_kafka_conf_set(conf, "bootstrap.servers", "localhost:9092", errstr, sizeof(errstr)) != RD_KAFKA_CONF_OK) {
         std::cerr << "Kafka config error (bootstrap.servers): " << errstr << std::endl;
         exit(1);
     }
