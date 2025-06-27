@@ -134,7 +134,7 @@ clk_sync_pulse_regs sync_regs_inst (
 //    - ignore sync_period?
 
 // ----------- MASTER MODE -----------
-assign incr_curr_tick_w = 1; // Increment every tick, extra logic may be added
+assign incr_curr_tick_w = master_mode_w || incr_nb_sync_w; // Increment every tick, extra logic may be added
 assign sync_pulse_o = master_mode_w && sync_period_detect_w; // master_mode: send out pulse every period
 
 // ----------- SLAVE MODE -----------

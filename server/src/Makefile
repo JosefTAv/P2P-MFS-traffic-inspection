@@ -46,7 +46,7 @@ BRAM_SIZE ?= 524288
 APP = onic_app
 
 # all source are stored in SRCS-y
-SRCS-y := main.cpp onic_port.cpp onic.cpp
+SRCS-y := main.cpp onic_port.cpp onic.cpp stats.cpp
 
 ifeq ($(CONFIG_RTE_LIBRTE_QDMA_GCOV),y)
   CFLAGS += -g -ftest-coverage -fprofile-arcs
@@ -75,15 +75,15 @@ CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 PC_FILE := $(shell $(PKGCONF) --path libdpdk 2>/dev/null)
 CFLAGS += -O3 $(shell $(PKGCONF) --cflags libdpdk)
-CXXFLAGS += -std=c++11
+CXXFLAGS += -std=c++17
 LDFLAGS_SHARED = $(shell $(PKGCONF) --libs libdpdk)
 LDFLAGS_STATIC = $(shell $(PKGCONF) --static --libs libdpdk)
 LDFLAGS += $(shell $(PKGCONF) --libs libdpdk)
 
-LDFLAGS += -L$(RTE_SDK)/$(RTE_TARGET)/lib -lrte_net_qdma
+LDFLAGS += -L$(RTE_SDK)/$(RTE_TARGET)/lib -lrte_net_qdma -lrdkafka
 
 # for shared library builds, we need to explicitly link these PMDs
-LDFLAGS_SHARED += -lrte_net_qdma -lrdkafka
+LDFLAGS_SHARED += -lrte_net_qdma
 
 build/$(APP)-shared: $(SRCS-y) Makefile $(PC_FILE) | build
 	$(CXX) $(CFLAGS) $(CXXFLAGS) $(SRCS-y) -o $@ $(LDFLAGS) $(LDFLAGS_SHARED)

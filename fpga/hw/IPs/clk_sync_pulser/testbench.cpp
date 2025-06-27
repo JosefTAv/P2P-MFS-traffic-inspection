@@ -77,7 +77,7 @@ void test_axi_write(Vclk_sync_pulse* top, VerilatedFstC* tfp){
         top->axis_aclk = t % 2; eval_and_dump_wave(top, tfp); t++;
     }
 
-    // write 0 to reg_master_mode
+    // set to slave mode
     top->s_axil_awvalid = 1;
     top->s_axil_wvalid = 1;
     top->s_axil_awaddr = 0x0;

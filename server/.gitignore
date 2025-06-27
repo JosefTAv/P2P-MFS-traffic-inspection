@@ -1,5 +1,5 @@
 # builds
-/src/build
+**/build/
 
 # Only keep necessary folders/configs for containers
 /tools/data_containers/*

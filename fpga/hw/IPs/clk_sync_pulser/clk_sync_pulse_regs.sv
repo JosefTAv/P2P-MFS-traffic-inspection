@@ -37,7 +37,13 @@
 // -----------------------------------------------------------------------------
 
 `timescale 1ns/1ps
-module clk_sync_pulse_regs (
+
+typedef enum logic { SLAVE, MASTER } mode_t;
+
+module clk_sync_pulse_regs #(
+    parameter mode_t DEFAULT_MODE = MASTER, // in master mode by default
+    parameter int DEFAULT_PERIOD = 64'd322 //Nb ticks per period according to axis_clk
+) (
   input         s_axil_awvalid,
   input  [31:0] s_axil_awaddr,
   output        s_axil_awready,
@@ -70,11 +76,6 @@ module clk_sync_pulse_regs (
   output [63:0] curr_tick_o
 );
 
-  enum { SLAVE, MASTER } mode;
-
-  localparam DEFAULT_MODE = MASTER; // in master mode by default
-  localparam DEFAULT_PERIOD = 64'd322; //Sync every 1 us for clk=322 MHz
-
   localparam C_ADDR_W = 12;
 
   // Register address
@@ -90,7 +91,7 @@ module clk_sync_pulse_regs (
   localparam CURR_TICK_LOWER = 12'h018;
 
 
-  reg                 reg_master_mode;
+  mode_t              reg_master_mode;
   reg          [63:0] reg_sync_period;
   reg          [63:0] reg_nb_sync;
   reg          [63:0] reg_curr_tick;
@@ -185,7 +186,7 @@ module clk_sync_pulse_regs (
     end else if (reg_en && reg_we) begin
       case (reg_addr)
         MASTER_MODE: begin
-          reg_master_mode <= reg_din[0];
+          reg_master_mode <= mode_t'(reg_din[0]);
         end
         SYNC_PERIOD_ADDR_UPPER: begin
           reg_sync_period[63:32] <= reg_din;

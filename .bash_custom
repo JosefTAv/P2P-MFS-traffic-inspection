@@ -1,5 +1,5 @@
 #Thesis repo stuff
-P2P_DIR="$(cd "$(dirname ${BASH_SOURCE[0]})" && pwd)"
+P2P_DIR="$(cd "$(dirname ${BASH_SOURCE[0]})" && pwd)" #Other scripts rely on this variable!!
 export P2P_DIR
 
 # Export useful stuff for project
