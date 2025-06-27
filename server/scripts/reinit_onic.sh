@@ -1,9 +1,10 @@
 #!/bin/bash
 # ------------------------------------------------------------------
 # Summary
-# 1. Unbind OpenNic (each PCIe function must be input manually)
-# 2. Setup OpenNic registers for usage as nic
-# 3. Rebind OpeNic for usage
+# 1. Check if vfio-pci has been modprobed
+# 2. Unbind OpenNic (each PCIe function must be input manually)
+# 3. Setup OpenNic registers for usage as nic
+# 4. Rebind OpeNic for usage
 # ------------------------------------------------------------------
 # Get the directory where this script lives
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -16,7 +17,16 @@ if [ "$#" -lt 1 ]; then
 fi
 
 # ========================
-# 1. Unbind OpenNic
+# 1. Modprobe vfio-pci
+# ========================
+modprobe_vfio() {
+	if ! lsmod | grep -q ^vfio_pci$; then
+		echo "vfio-pci not detected, modprobing"
+		sudo modprobe vfio-pci
+	fi
+}
+# ========================
+# 2. Unbind OpenNic
 # ========================
 unbind_onic() {
 	DPDK_PATH="$SCRIPT_DIR/../tools/dpdk-stable"
@@ -26,7 +36,7 @@ unbind_onic() {
 }
 
 # ========================
-# 2. Write to registers
+# 3. Write to registers
 # ========================
 setup_onic() {
 	pcimem="$SCRIPT_DIR/../tools/pcimem/pcimem"
@@ -49,7 +59,7 @@ setup_onic() {
 }
 
 # ========================
-# 3. Rebind driver
+# 4. Rebind driver
 # ========================
 rebind_driver() {
 	for pci_adr in "$@"; do # rebind all devices
@@ -59,6 +69,7 @@ rebind_driver() {
 	sudo "$DPDK_PATH"/usertools/dpdk-devbind.py -s
 }
 
+modprobe_vfio
 unbind_onic $@
-setup_onic $1 #: not needed anymore, done in app on init
+# setup_onic $1 #: not needed anymore, done in app on init
 rebind_driver $@
