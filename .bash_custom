@@ -23,6 +23,7 @@ alias virt22='ssh -Y user@192.168.122.52'
 
 # Go to directory
 alias scripts='cd $P2P_DIR/server/scripts'
+alias src_sync='cd $P2P_DIR/server/src_sync'
 alias src='cd $P2P_DIR/server/src'
 alias dpdk='cd $P2P_DIR/dpdk-stable'
 alias fpga='cd $P2P_DIR/fpga'

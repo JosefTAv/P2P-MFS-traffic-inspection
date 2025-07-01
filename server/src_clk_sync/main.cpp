@@ -3,23 +3,28 @@
 #include <rte_mbuf.h>
 #include <rte_cycles.h>
 
+#include <cstring> // for strcmp
+
 #define NUM_MBUFS 4096
 #define MBUF_CACHE_SIZE 250
 #define BURST_SIZE 1
 
+#define CUSTOM_VLAN_ID (0x0ABC)
+#define DEFAULT_FILLER (0xFF)
+
 static const uint16_t rss_symmetric_key[10] = {0};
 
 int main(int argc, char **argv) {
-    if (argc != 4) {
-        printf("Usage: %s EAL args -- <port_id> <period_cycles> <packet_size>\n", argv[0]);
-        return -1;
+    if (argc < 1 || strcmp(argv[0], "-h") == 0 || strcmp(argv[0], "help") == 0) {
+        printf("Usage: ./my_app [options]\n");
+        return 0;
     }
 
 	int ret = 0;
     int num_ports = 0;
     unsigned port_id = 0;
-    uint64_t period = 1000000;
-    uint16_t pkt_size = 150;
+    uint64_t period = 2550; //nb cycles per period
+    uint16_t pkt_size = 60;
 
 	/* Make sure things are initialized ... */
 	ret = rte_eal_init(argc, argv);
@@ -31,10 +36,20 @@ int main(int argc, char **argv) {
 	if (num_ports < 1)
 		rte_exit(EXIT_FAILURE, "No Ethernet devices found."
 			" Try updating the FPGA image.\n");
-    
-    port_id = atoi(argv[1]);
-    period = strtoull(argv[2], NULL, 10);
-    pkt_size = atoi(argv[3]);
+    uint64_t hz = rte_get_timer_hz();
+
+    argc -= ret;
+    argv += ret;
+
+    if (argc > 1) {
+        port_id = atoi(argv[1]);
+    }
+    if (argc > 2) {
+        period = strtoull(argv[2], NULL, 10);
+    }
+    if (argc > 3) {
+        pkt_size = atoi(argv[3]);
+    }
 
     struct rte_mempool *mbuf_pool = rte_pktmbuf_pool_create("MBUF_POOL",
         NUM_MBUFS * num_ports, MBUF_CACHE_SIZE, 0,
@@ -55,24 +70,19 @@ int main(int argc, char **argv) {
     ret = rte_eth_dev_start(port_id);
     if (ret < 0) rte_exit(EXIT_FAILURE, "Port start failed\n");
 
-    printf("Sending one packet every %" PRIu64 " cycles (%g µs at 2GHz)\n",
-           period, (double)period / 2000000000.0);
+    printf("Sending one packet every %" PRIu64 " cycles (%g µs at %.2fGHz)\n",
+           period, (double)1e6*period/hz, hz/1e9);
 
     uint64_t next_tsc = rte_get_timer_cycles();
-
-    // Pre-build a baseline mbuf
-    struct rte_mbuf *m = rte_pktmbuf_alloc(mbuf_pool);
-    char *pkt = rte_pktmbuf_append(m, pkt_size);
-    memset(pkt, 0xAB, pkt_size);  // arbitrary payload
 
     // Build Ethernet + VLAN header
     struct rte_ether_hdr *eth;
     struct rte_vlan_hdr *vlan;
     char *pkt_data;
 
-    m = rte_pktmbuf_alloc(mbuf_pool);
+    struct rte_mbuf *m = rte_pktmbuf_alloc(mbuf_pool);
     pkt_data = rte_pktmbuf_append(m, pkt_size);
-    memset(pkt_data, 0, pkt_size); // fill rest with dummy payload
+    memset(pkt_data, DEFAULT_FILLER, pkt_size); // fill rest with dummy payload
 
     eth = (struct rte_ether_hdr *)pkt_data;
 
@@ -86,10 +96,10 @@ int main(int argc, char **argv) {
     eth->ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN); // 0x8100
 
     vlan = (struct rte_vlan_hdr *)(eth + 1); // VLAN header is after Eth header
-    vlan->vlan_tci = rte_cpu_to_be_16(0x0ABC); // VLAN ID 0xABC
+    vlan->vlan_tci = rte_cpu_to_be_16(CUSTOM_VLAN_ID); // VLAN ID 0xABC
     vlan->eth_proto = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4); // Payload Ethertype
 
-
+    uint64_t count = 0;
     while (1) {
         uint64_t cur = rte_get_timer_cycles();
         if (cur < next_tsc) {
@@ -109,6 +119,7 @@ int main(int argc, char **argv) {
             rte_pktmbuf_free(txm);
             fprintf(stderr, "Packet dropped\n");
         }
+        count++;
     }
 
     // never reached

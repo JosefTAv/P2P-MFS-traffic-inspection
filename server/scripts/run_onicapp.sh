@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # sudo LD_LIBRARY_PATH=$P2P_DIR/server/tools/dpdk-stable/lib/x86_64-linux-gnu \
 # $P2P_DIR/server/src/build/onic_app --file-prefix josef \
 # -l 176,177,183 -n 2 -a 81:00.0 -a 81:00.1
