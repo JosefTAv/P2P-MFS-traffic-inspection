@@ -17,12 +17,20 @@
 #include <fcntl.h>
 #include <rte_mbuf.h>
 
+// Custom headers
+#include "forward_context.h"
+#include "pipeline.h"
 #include "onic_helper.h"
 #include "onic_port.h"
 #include "onic.h"
+
+#include "stats.h"
 
 #include "../tools/dpdk-stable/drivers/net/qdma/rte_pmd_qdma.h"
 
 // For catching ctrl c signals
 #include <atomic>
 #include <csignal>
+
+// Parsing toml files
+#include "toml.hpp"

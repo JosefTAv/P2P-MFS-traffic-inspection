@@ -87,34 +87,34 @@ int OnicPort::port_init()
     pinfo.queue_base = queue_base;
 
     for (x = 0; x < pinfo.num_queues; x++) {
-    if (x < pinfo.st_queues) {
-    diag = rte_pmd_qdma_set_queue_mode(port_id, x,
-            RTE_PMD_QDMA_STREAMING_MODE);
-    if (diag < 0)
-        rte_exit(EXIT_FAILURE, "rte_pmd_qdma_set_queue_mode : "
-                "Passing of QUEUE_MODE "
-                "failed\n");
-    } else {
-    diag = rte_pmd_qdma_set_queue_mode(port_id, x,
-            RTE_PMD_QDMA_MEMORY_MAPPED_MODE);
-    if (diag < 0)
-        rte_exit(EXIT_FAILURE, "rte_pmd_qdma_set_queue_mode : "
-                "Passing of QUEUE_MODE "
-                "failed\n");
-    }
+        if (x < pinfo.st_queues) {
+        diag = rte_pmd_qdma_set_queue_mode(port_id, x,
+                RTE_PMD_QDMA_STREAMING_MODE);
+        if (diag < 0)
+            rte_exit(EXIT_FAILURE, "rte_pmd_qdma_set_queue_mode : "
+                    "Passing of QUEUE_MODE "
+                    "failed\n");
+        } else {
+        diag = rte_pmd_qdma_set_queue_mode(port_id, x,
+                RTE_PMD_QDMA_MEMORY_MAPPED_MODE);
+        if (diag < 0)
+            rte_exit(EXIT_FAILURE, "rte_pmd_qdma_set_queue_mode : "
+                    "Passing of QUEUE_MODE "
+                    "failed\n");
+        }
 
-    diag = rte_eth_tx_queue_setup(port_id, x, pinfo.nb_descs, 0,
-        &tx_conf);
-    if (diag < 0)
-    rte_exit(EXIT_FAILURE, "Cannot setup port %d "
-            "TX Queue id:%d "
-            "(err=%d)\n", port_id, x, diag);
-    rx_conf.rx_thresh.wthresh = DEFAULT_RX_WRITEBACK_THRESH;
-    diag = rte_eth_rx_queue_setup(port_id, x, pinfo.nb_descs, 0,
-        &rx_conf, mbuf_pool);
-    if (diag < 0)
-    rte_exit(EXIT_FAILURE, "Cannot setup port %d "
-            "RX Queue 0 (err=%d)\n", port_id, diag);
+        diag = rte_eth_tx_queue_setup(port_id, x, pinfo.nb_descs, 0,
+            &tx_conf);
+        if (diag < 0)
+        rte_exit(EXIT_FAILURE, "Cannot setup port %d "
+                "TX Queue id:%d "
+                "(err=%d)\n", port_id, x, diag);
+        rx_conf.rx_thresh.wthresh = DEFAULT_RX_WRITEBACK_THRESH;
+        diag = rte_eth_rx_queue_setup(port_id, x, pinfo.nb_descs, 0,
+            &rx_conf, mbuf_pool);
+        if (diag < 0)
+        rte_exit(EXIT_FAILURE, "Cannot setup port %d "
+                "RX Queue 0 (err=%d)\n", port_id, diag);
     }
 
     diag = rte_eth_dev_start(port_id);
@@ -123,7 +123,6 @@ int OnicPort::port_init()
         port_id, diag);
 
     // Check BDF
-    uint32_t b, d, f;
     rte_pmd_qdma_get_bdf(port_id, &b, &d, &f);
     printf("BDF(%02x:%02x.%01x) configured on port_id(%d)\n", b, d, f, port_id);
 

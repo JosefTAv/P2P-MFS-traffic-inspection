@@ -1,26 +1,20 @@
 #include "main.h"
 #include "onic_port.h"
+#include "stats.h"
 
+#include <librdkafka/rdkafka.h>
 #include <rte_ethdev.h>
 #include <rte_mbuf.h>
 #include <rte_atomic.h>
 
-#include <librdkafka/rdkafka.h>
 #include <iostream>
 
+#include <rte_metrics.h>
+
 #define BURST_SIZE 32
-#define NUM_MBUFS 4096
 #define MBUF_CACHE_SIZE 250
 
-struct ForwardingContext {
-    const OnicPort* rx_port;
-    const OnicPort* tx_port;
-	int inQ;
-	int outQ;
-    rte_atomic32_t stop_flag;
-    rte_atomic32_t rx_count;
-	rte_atomic32_t tx_count;
-};
+#define STATS_RING_SIZE 8192
 
 int software_forwarder_thread(void *arg);
 std::atomic<bool> sigkill{false};
@@ -30,8 +24,12 @@ void force_exit_handler(int) {
     sigkill= true;  // Signal threads to stop
 }
 
+unsigned int launch_software_forwarder(unsigned int prev_lcore_id, ForwardingContext &ctx);
+
 void produce_kafka();
 void produce_kafka(const char *topic, const char *payload, size_t payload_len, const char *key, size_t key_len);
+
+struct ForwardingContext ctx;
 
 int main(int argc, char* argv[]){
 	std::signal(SIGINT, force_exit_handler);  // Catch Ctrl+C
@@ -59,7 +57,6 @@ int main(int argc, char* argv[]){
 		rte_exit(EXIT_FAILURE, "No Ethernet devices found."
 			" Try updating the FPGA image.\n");
 
-
 	/* Make sure things are defined ... */
 	do_sanity_checks();
 
@@ -79,94 +76,111 @@ int main(int argc, char* argv[]){
 	int nb_ports = sizeof(onic0_port_ids)/sizeof(onic0_port_ids[0]);
 
 	Onic onic0(pinfos, onic0_port_ids, nb_ports);
-	// Onic onic1(pinfos, onic1_port_ids, nb_ports);
+	Onic onic1(pinfos, onic1_port_ids, nb_ports);
 
-	static struct ForwardingContext ctx = {
-		.rx_port = &onic0.get_ports()[0],
-		.tx_port = &onic0.get_ports()[0],
-		.inQ = 0,
-		.outQ = 0,
-		.stop_flag = RTE_ATOMIC32_INIT(0),
-		.rx_count = RTE_ATOMIC32_INIT(0),
-		.tx_count = RTE_ATOMIC32_INIT(0)
-	};
+    /******************************************************************************************************************
+											Configure contexts and rings
+	******************************************************************************************************************/
+
+    struct rte_ring *stats_ring = rte_ring_create(
+        "mbuf_ring",
+        STATS_RING_SIZE,
+        rte_socket_id(),
+        RING_F_SC_DEQ // Single-consumer if only one thread dequeues
+    );
+
+    if (stats_ring == NULL) {
+        rte_exit(EXIT_FAILURE, "Cannot create ring\n");
+    }
+
+
+    ctx = ForwardingContext{
+        .rx_onic = &onic1,
+        .tx_onic = &onic0,
+        .rx_port = 0,
+        .tx_port = 0,
+
+        .rx_Qs = {0, -1,-1},
+        .tx_Qs = {0, -1,-1},
+        .nb_rx_Qs = 1,
+        .nb_tx_Qs = 1,
+        
+        .stats_ring = stats_ring,
+
+        .stop_flag = RTE_ATOMIC32_INIT(0),
+    };
+    ctx.print_schema();
 	/******************************************************************************************************************
 											Begin software forwarders
 	******************************************************************************************************************/
 
 	unsigned lcore_id = rte_get_next_lcore(-1, 1, 0);
-    rte_eal_remote_launch(software_forwarder_thread, &ctx, lcore_id);
+    lcore_id = launch_software_forwarder(lcore_id, ctx);
+    // rte_eal_remote_launch(software_forwarder_thread, &ctx, lcore_id);
 
-    // Main thread: Print stats every second
-	uint32_t old_rx_dpdk = 0;
-	uint32_t old_tx_dpdk = 0;
+    /******************************************************************************************************************
+											Begin stats producers
+	******************************************************************************************************************/
+    StatsLog stats(&ctx, "Ports");
+    lcore_id = rte_get_next_lcore(lcore_id, 1, 0);
+    rte_eal_remote_launch(StatsLog_run_producer, &stats, lcore_id);
 
-	CmacStats oldStats;
-    CmacStats accumStats;
+    StatsLog cmac_stats(&ctx, "CMACs");
+    lcore_id = rte_get_next_lcore(lcore_id, 1, 0);
+    rte_eal_remote_launch(StatsLog_cmac_producer, &cmac_stats, lcore_id);
 
-    while (!sigkill) {
-        CmacStats stats0 = onic0.get_cmac_stats(0);
-		CmacStats stats1 = onic0.get_cmac_stats(1);
+    // // Main thread: Print stats every second
+	// uint32_t old_rx_dpdk = 0;
+	// uint32_t old_tx_dpdk = 0;
 
-		if(old_rx_dpdk != rte_atomic32_read(&ctx.rx_count) || old_tx_dpdk != rte_atomic32_read(&ctx.tx_count)){
-        	printf("(dpdk) Packets received: %d\n", rte_atomic32_read(&ctx.rx_count));
-			old_rx_dpdk = rte_atomic32_read(&ctx.rx_count);
+	// CmacStats oldStats;
+    // CmacStats accumStats;
 
-			printf("(dpdk) Packets sent: %d\n", rte_atomic32_read(&ctx.tx_count));
-			old_tx_dpdk = rte_atomic32_read(&ctx.tx_count);
+    // while (!sigkill) {
+    //     CmacStats stats0 = onic0.get_cmac_stats(0);
+	// 	CmacStats stats1 = onic0.get_cmac_stats(1);
 
-			oldStats = stats0;
-            accumStats.add(stats0);
-			accumStats.print();
-		}
+	// 	if(old_rx_dpdk != rte_atomic32_read(&ctx.rx_count) || old_tx_dpdk != rte_atomic32_read(&ctx.tx_count)){
+    //     	printf("(dpdk) Packets received: %d\n", rte_atomic32_read(&ctx.rx_count));
+	// 		old_rx_dpdk = rte_atomic32_read(&ctx.rx_count);
 
-        sleep(1);
-    }
+	// 		printf("(dpdk) Packets sent: %d\n", rte_atomic32_read(&ctx.tx_count));
+	// 		old_tx_dpdk = rte_atomic32_read(&ctx.tx_count);
+
+	// 	}
+
+    //     sleep(1);
+    // }
 
     // Cleanup
     rte_atomic32_set(&ctx.stop_flag, 1);
-    rte_eal_wait_lcore(lcore_id);
+
+    unsigned nb_lcores = rte_lcore_count();  // Get the total number of cores
+    for (lcore_id = 1; lcore_id < nb_lcores; lcore_id++) {  // Skip lcore 0 (main core)
+        if (rte_lcore_is_enabled(lcore_id)) {  // Check if the lcore is enabled
+            printf("Waiting for Lcore %u to finish...\n", lcore_id);
+            rte_eal_wait_lcore(lcore_id);  // Wait for the lcore to finish
+        }
+    }
 	/******************************************************************************************************************
 											Kafka test
 	******************************************************************************************************************/
-	const char *topic = "telegraf";
-    const char *payload = "TestTable,tag1=test ti=50,t2=\"1\"\n";
-    produce_kafka(topic, payload, strlen(payload), NULL, 0);
+	// const char *topic = "telegraf";
+    // const char *payload = "TestTable,tag1=test ti=50,t2=\"1\"\n";
+    // produce_kafka(topic, payload, strlen(payload), NULL, 0);
 	rte_delay_ms(1000);
 
     return 0;
 }
 
-int software_forwarder_thread(void *arg){
-	auto *ctx = (struct ForwardingContext *)arg;
-	struct rte_mbuf *mbufs[BURST_SIZE];
+unsigned int launch_software_forwarder(unsigned int prev_lcore_id, ForwardingContext &ctx){
+    prev_lcore_id = rte_get_next_lcore(-1, 1, 0);
+    rte_eal_remote_launch(fpga_rx_thread, &ctx, prev_lcore_id);
 
-    RTE_LOG(INFO, USER1, "Worker started on lcore %u\n", rte_lcore_id());
+    prev_lcore_id = rte_get_next_lcore(-1, 1, 0);
+    rte_eal_remote_launch(fpga_tx_thread, &ctx, prev_lcore_id);
 
-    while (!rte_atomic32_read(&ctx->stop_flag)) {
-        // Receive packets
-        int32_t nb_rx = rte_eth_rx_burst(ctx->rx_port->get_port_id(), ctx->inQ, mbufs, BURST_SIZE);
-        if (unlikely(nb_rx == 0)) {
-            rte_pause();
-            continue;
-        }
-
-        // Update stats
-        rte_atomic32_add(&ctx->rx_count, nb_rx);
-
-        // Transmit packets
-        int32_t nb_tx = rte_eth_tx_burst(ctx->tx_port->get_port_id(), ctx->outQ, mbufs, nb_rx);
-		rte_atomic32_add(&ctx->tx_count, nb_tx);
-
-        // Free any untransmitted packets
-        if (unlikely(nb_tx < nb_rx)) {
-            for (uint16_t i = nb_tx; i < nb_rx; i++) {
-                rte_pktmbuf_free(mbufs[i]);
-            }
-        }
-
-    }
-    return 0;
+    return prev_lcore_id;
 }
 
 void produce_kafka(const char *topic, const char *payload, size_t payload_len, const char *key, size_t key_len) {

@@ -46,7 +46,7 @@ BRAM_SIZE ?= 524288
 APP = onic_app
 
 # all source are stored in SRCS-y
-SRCS-y := main.cpp onic_port.cpp onic.cpp stats.cpp
+SRCS-y := main.cpp onic_port.cpp onic.cpp stats.cpp pipeline.cpp 
 
 ifeq ($(CONFIG_RTE_LIBRTE_QDMA_GCOV),y)
   CFLAGS += -g -ftest-coverage -fprofile-arcs

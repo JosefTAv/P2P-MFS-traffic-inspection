@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <sys/ioctl.h>
 #include <net/if.h>
 #include <unistd.h>
@@ -11,6 +12,8 @@
 #include "../tools/dpdk-stable/drivers/net/qdma/qdma_dpdk_compat.h"
 
 #include <rte_spinlock.h>
+
+#include "onic_helper.h"
 
 #define QDMA_MAX_PORTS	256
 
@@ -100,6 +103,7 @@ class OnicPort { // this is really a qdma port...
         // Attributes
         PortInfo pinfo;
         int port_id;
+        uint32_t b, d, f;
 
     public:
         // Constructors/etc
@@ -160,4 +164,5 @@ class OnicPort { // this is really a qdma port...
         // getters/setters
         int get_port_id() const { return port_id; }
         PortInfo get_pinfo() const { return pinfo; }
+        std::array<uint32_t, 3> get_bdf() const { return {b, d, f}; }
     };
