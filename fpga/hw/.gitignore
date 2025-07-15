@@ -2,13 +2,13 @@
 # website: https://www.xilinx.com/support/download.html
 
 ####################
-#### VERILATOR 
+#### VERILATOR
 ####################
 **/obj_dir/
 
 ####################
 ####   VIVADO
-#################### 
+####################
 # [home]
 *.jou
 *.log
@@ -113,4 +113,4 @@ hw_handoff
 ipshared
 
 ### Ignore the builds
-**/*_build/
+**/*_build*/

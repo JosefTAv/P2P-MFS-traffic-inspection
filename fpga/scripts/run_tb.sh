@@ -42,9 +42,11 @@ parse_args() {
         exit 1
     fi
     tb_dir=$(dirname "$tb_path")
-    echo -e ''${GREEN}'Testbench:'${NC}' \t '$(basename $tb_path)''
+    ip_dir=$tb_dr/..
+    
+    echo -e ''${GREEN}'Testbench:'${NC}' \t '$(basename $tb_dir)''
     echo -e ''${GREEN}'Top:'${NC}' \t\t '$top''
-    echo -e ''${GREEN}'Project dir:'${NC}' \t '$tb_dir''
+    echo -e ''${GREEN}'Project dir:'${NC}' \t '$ip_dir''
     echo
 }
 

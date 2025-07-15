@@ -1,7 +1,8 @@
 --cc
 
-clk_sync_pulse.sv
-clk_sync_pulse_regs.sv
+../clk_sync_pulse/clk_sync_pulse.sv
+../clk_sync_pulse/clk_sync_pulse_regs.sv
+../packet_detect/packet_detect.sv
 ../../../tools/open-nic-shell/src/utility/axi_lite_register.sv
 
 // Strict warnings

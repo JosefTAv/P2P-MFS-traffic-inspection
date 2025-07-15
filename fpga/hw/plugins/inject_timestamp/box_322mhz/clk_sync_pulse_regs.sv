@@ -1,0 +1,1 @@
+../../../IPs/clk_sync_pulse/clk_sync_pulse_regs.sv
