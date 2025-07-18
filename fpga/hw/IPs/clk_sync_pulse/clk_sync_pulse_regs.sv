@@ -1,20 +1,4 @@
 // *************************************************************************
-//
-// Copyright 2020 Xilinx, Inc.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
-// *************************************************************************
 // Address range:
 //   - 0x3000 - 0x3FFF (CMAC0)
 //   - 0x7000 - 0x7FFF (CMAC1)
@@ -67,6 +51,7 @@ module clk_sync_pulse_regs #(
     input axil_aclk,
     input axis_aclk,
     input axil_aresetn,
+    input axis_aresetn,
 
     // synchronised with axis_aclk
     output master_mode_o,
@@ -203,8 +188,8 @@ module clk_sync_pulse_regs #(
   end
 
   // nb_sync
-  always @(posedge axis_aclk) begin
-    if (~axil_aresetn) begin
+  always_ff @(posedge axis_aclk) begin
+    if (~axis_aresetn) begin
       reg_nb_sync <= '0;
     end else if (incr_nb_sync_i || sync_period_detect_w) begin
       reg_nb_sync <= reg_nb_sync + 1;
@@ -212,8 +197,8 @@ module clk_sync_pulse_regs #(
   end
 
   // curr_tick
-  always @(posedge axis_aclk) begin
-    if (~axil_aresetn) begin
+  always_ff @(posedge axis_aclk) begin
+    if (~axis_aresetn) begin
       reg_curr_tick <= '0;
     end else if (incr_nb_sync_i) begin  // slave: reset curr_tick manually
       reg_curr_tick <= '0;
@@ -225,8 +210,21 @@ module clk_sync_pulse_regs #(
     end
   end
 
+  // Sync reg_sync_period from axil to axis domain
+  reg [63:0] reg_sync_period_meta;
+  reg [63:0] reg_sync_period_sync;
+  always_ff @(posedge axis_aclk) begin
+    reg_sync_period_meta <= reg_sync_period;
+    reg_sync_period_sync <= reg_sync_period_meta;
+  end
+
   // detecting reaching period as master
-  assign master_sync_period_detect_w = reg_master_mode && (reg_curr_tick == reg_sync_period);
+  reg master_sync_period_detect_r;
+  always_ff @(posedge axis_aclk) begin  // register to shorten paths
+    master_sync_period_detect_r <= reg_master_mode && ~|(reg_curr_tick ^ reg_sync_period_sync);
+  end
+
+  assign master_sync_period_detect_w = master_sync_period_detect_r;
   assign sync_period_detect_w = master_sync_period_detect_w && incr_curr_tick_i;
 
   // connect regs to outputs

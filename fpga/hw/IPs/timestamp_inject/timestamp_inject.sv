@@ -3,24 +3,6 @@
 module timestamp_inject #(
     parameter int NUM_AXI_STREAM = 1
 ) (
-    // AXI-lite interface
-    input         s_axil_awvalid,
-    input  [31:0] s_axil_awaddr,
-    output        s_axil_awready,
-    input         s_axil_wvalid,
-    input  [31:0] s_axil_wdata,
-    output        s_axil_wready,
-    output        s_axil_bvalid,
-    output [ 1:0] s_axil_bresp,
-    input         s_axil_bready,
-    input         s_axil_arvalid,
-    input  [31:0] s_axil_araddr,
-    output        s_axil_arready,
-    output        s_axil_rvalid,
-    output [31:0] s_axil_rdata,
-    output [ 1:0] s_axil_rresp,
-    input         s_axil_rready,
-
     // AXI-stream input
     input logic [    NUM_AXI_STREAM-1:0] i_axis_tvalid,
     input logic [512*NUM_AXI_STREAM-1:0] i_axis_tdata,
@@ -31,6 +13,10 @@ module timestamp_inject #(
 
     // AXI-stream output
     output logic [512*NUM_AXI_STREAM-1:0] o_axis_tdata,
+
+    input logic [63:0] i_nb_sync,
+    input logic [63:0] i_curr_tick,
+    output logic o_sync_detected,
 
     input axil_aclk,
     input axis_aclk,
@@ -63,51 +49,22 @@ module timestamp_inject #(
 
           .sync_detected_o(sync_detected)
       );
-
-      logic [63:0] nb_sync;
-      logic [63:0] curr_tick;
-      clk_sync_pulse clk_sync_pulse_inst (
-          .s_axil_awvalid(s_axil_awvalid),
-          .s_axil_awaddr (s_axil_awaddr),
-          .s_axil_awready(s_axil_awready),
-          .s_axil_wvalid (s_axil_wvalid),
-          .s_axil_wdata  (s_axil_wdata),
-          .s_axil_wready (s_axil_wready),
-          .s_axil_bvalid (s_axil_bvalid),
-          .s_axil_bresp  (s_axil_bresp),
-          .s_axil_bready (s_axil_bready),
-          .s_axil_arvalid(s_axil_arvalid),
-          .s_axil_araddr (s_axil_araddr),
-          .s_axil_arready(s_axil_arready),
-          .s_axil_rvalid (s_axil_rvalid),
-          .s_axil_rdata  (s_axil_rdata),
-          .s_axil_rresp  (s_axil_rresp),
-          .s_axil_rready (s_axil_rready),
-
-          .sync_pulse_i(0),
-          .sync_pulse_o(),
-          .nb_sync_o(nb_sync),
-          .curr_tick_o(curr_tick),
-
-          .axil_aclk(axil_aclk),
-          .axis_aclk(axis_aclk),
-          .axil_aresetn(axil_aresetn)
-      );
+      assign o_sync_detected = sync_detected;
 
       logic found_timestamp_idx;
-      logic [8:0] timestamp_insert_idx;
+      logic [$clog2(512)-1:0] timestamp_insert_idx;
       always_comb begin : get_timestamp_idx
-        int j;
+        int j;  // offset where we insert our timestamp
         found_timestamp_idx  = 0;
         timestamp_insert_idx = '0;
 
         for (
             j = PAYLOAD_OFFSET; j < 512 - TIMESTAMP_SIZE; j += TIMESTAMP_SIZE
-        ) begin  //check where to insert timestamp
+        ) begin  //check where to insert timestamp: increment
           if (!found_timestamp_idx) begin
-            if (i_axis_tdata[512*(i+1)-1-j-:32] != EMPTY_TIMESTAMP) begin
+            if (i_axis_tdata[`getbit(512, i, j)+:$bits(EMPTY_TIMESTAMP)] != EMPTY_TIMESTAMP) begin
               found_timestamp_idx  = 1;
-              timestamp_insert_idx = 512 * i - j;
+              timestamp_insert_idx = `getbit(512, i, j);
             end
           end
         end
@@ -117,8 +74,8 @@ module timestamp_inject #(
         o_axis_tdata = i_axis_tdata;
 
         if (sync_detected) begin
-          // o_axis_tdata[timestamp_insert_idx-:TIMESTAMP_SIZE] = {nb_sync[31:0], curr_tick};
-          o_axis_tdata[timestamp_insert_idx-:TIMESTAMP_SIZE] = {31'hABCD, curr_tick};
+          // o_axis_tdata[timestamp_insert_idx-:TIMESTAMP_SIZE] = {i_nb_sync[31:0], i_curr_tick};
+          o_axis_tdata[timestamp_insert_idx+:TIMESTAMP_SIZE] = {31'hABCD, i_curr_tick};
         end
       end : insert_timestamp
 

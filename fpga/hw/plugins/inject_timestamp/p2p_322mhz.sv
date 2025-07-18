@@ -125,6 +125,45 @@ module p2p_322mhz #(
   //       .aresetn(axil_aresetn)
   //   );
 
+  logic [2*NUM_CMAC_PORT-1:0] syncs_detected;  // may be in different time domains
+  logic sync_detected_combined_meta;
+  logic sync_detected_combined_r;
+  always_ff @(posedge cmac_clk[0]) begin  // sync syncs_detected to same clock
+    sync_detected_combined_meta <= |syncs_detected; // OR: packet may arrive on any port in any direction
+    sync_detected_combined_r <= sync_detected_combined_meta;
+  end
+
+  logic [63:0] nb_sync;
+  logic [63:0] curr_tick;
+  clk_sync_pulse clk_sync_pulse_inst (
+      .s_axil_awvalid(s_axil_awvalid),
+      .s_axil_awaddr (s_axil_awaddr),
+      .s_axil_awready(s_axil_awready),
+      .s_axil_wvalid (s_axil_wvalid),
+      .s_axil_wdata  (s_axil_wdata),
+      .s_axil_wready (s_axil_wready),
+      .s_axil_bvalid (s_axil_bvalid),
+      .s_axil_bresp  (s_axil_bresp),
+      .s_axil_bready (s_axil_bready),
+      .s_axil_arvalid(s_axil_arvalid),
+      .s_axil_araddr (s_axil_araddr),
+      .s_axil_arready(s_axil_arready),
+      .s_axil_rvalid (s_axil_rvalid),
+      .s_axil_rdata  (s_axil_rdata),
+      .s_axil_rresp  (s_axil_rresp),
+      .s_axil_rready (s_axil_rready),
+
+      .sync_pulse_i(sync_detected_combined_r),
+      .sync_pulse_o(),
+      .nb_sync_o(nb_sync),
+      .curr_tick_o(curr_tick),
+
+      .axil_aclk(axil_aclk),
+      .axis_aclk(cmac_clk[0]),
+      .axil_aresetn(axil_aresetn),
+      .axis_aresetn(cmac_rstn[0])
+  );
+
   generate
     for (genvar i = 0; i < NUM_CMAC_PORT; i++) begin : cmac_gen_block
       axi_stream_register_slice #(
@@ -159,23 +198,6 @@ module p2p_322mhz #(
         timestamp_inject #(
             .NUM_AXI_STREAM(1)
         ) timestamp_inject_tx_inst (
-            .s_axil_awvalid(s_axil_awvalid),
-            .s_axil_awaddr (s_axil_awaddr),
-            .s_axil_awready(s_axil_awready),
-            .s_axil_wvalid (s_axil_wvalid),
-            .s_axil_wdata  (s_axil_wdata),
-            .s_axil_wready (s_axil_wready),
-            .s_axil_bvalid (s_axil_bvalid),
-            .s_axil_bresp  (s_axil_bresp),
-            .s_axil_bready (s_axil_bready),
-            .s_axil_arvalid(s_axil_arvalid),
-            .s_axil_araddr (s_axil_araddr),
-            .s_axil_arready(s_axil_arready),
-            .s_axil_rvalid (s_axil_rvalid),
-            .s_axil_rdata  (s_axil_rdata),
-            .s_axil_rresp  (s_axil_rresp),
-            .s_axil_rready (s_axil_rready),
-
             .i_axis_tvalid(axis_adap_tx_322mhz_tvalid[i]),
             .i_axis_tdata (axis_adap_tx_322mhz_tdata[`getvec(512, i)]),
             .i_axis_tkeep (axis_adap_tx_322mhz_tkeep[`getvec(64, i)]),
@@ -185,9 +207,12 @@ module p2p_322mhz #(
 
             .o_axis_tdata(axis_inject_cmac_tx_tdata[`getvec(512, i)]),
 
+            .i_nb_sync(nb_sync),
+            .i_curr_tick(curr_tick),
+            .o_sync_detected(syncs_detected[2*i]),
+
             .axil_aclk(axil_aclk),
-            .axis_aclk(cmac_clk[i]),
-            .axil_aresetn(cmac_rstn[i])
+            .axis_aclk(cmac_clk[i])
         );
 
 
@@ -277,23 +302,6 @@ module p2p_322mhz #(
         timestamp_inject #(
             .NUM_AXI_STREAM(1)
         ) timestamp_inject_rx_inst (
-            .s_axil_awvalid(s_axil_awvalid),
-            .s_axil_awaddr (s_axil_awaddr),
-            .s_axil_awready(s_axil_awready),
-            .s_axil_wvalid (s_axil_wvalid),
-            .s_axil_wdata  (s_axil_wdata),
-            .s_axil_wready (s_axil_wready),
-            .s_axil_bvalid (s_axil_bvalid),
-            .s_axil_bresp  (s_axil_bresp),
-            .s_axil_bready (s_axil_bready),
-            .s_axil_arvalid(s_axil_arvalid),
-            .s_axil_araddr (s_axil_araddr),
-            .s_axil_arready(s_axil_arready),
-            .s_axil_rvalid (s_axil_rvalid),
-            .s_axil_rdata  (s_axil_rdata),
-            .s_axil_rresp  (s_axil_rresp),
-            .s_axil_rready (s_axil_rready),
-
             .i_axis_tvalid(axis_adap_rx_322mhz_tvalid[i]),
             .i_axis_tdata (axis_adap_rx_322mhz_tdata[`getvec(512, i)]),
             .i_axis_tkeep (axis_adap_rx_322mhz_tkeep[`getvec(64, i)]),
@@ -303,9 +311,12 @@ module p2p_322mhz #(
 
             .o_axis_tdata(axis_inject_cmac_rx_tdata[`getvec(512, i)]),
 
+            .i_nb_sync(nb_sync),
+            .i_curr_tick(curr_tick),
+            .o_sync_detected(syncs_detected[2*i+1]),
+
             .axil_aclk(axil_aclk),
-            .axis_aclk(cmac_clk[i]),
-            .axil_aresetn(cmac_rstn[i])
+            .axis_aclk(cmac_clk[i])
         );
 
         axi_stream_register_slice #(
