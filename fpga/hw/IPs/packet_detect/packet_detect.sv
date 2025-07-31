@@ -50,7 +50,7 @@ module packet_detect #(
 
       // Extract packet data for each port
       logic [511:0] pkt_data;
-      assign pkt_data = s_axis_tdata[512*i+511 : 512*i];
+      assign pkt_data = s_axis_tdata[`getvec(512, i)];
 
       // detect if VLAN packet
       logic [15:0] eth_type;

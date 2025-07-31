@@ -38,12 +38,13 @@ module clk_sync_pulse (
     // Synchronized to axis_aclk
     input         sync_pulse_i,
     output        sync_pulse_o,
-    output [63:0] nb_sync_o,
-    output [63:0] curr_tick_o,
+    output [31:0] nb_sync_o,
+    output [31:0] curr_tick_o,
 
     input axil_aclk,
     input axis_aclk,
-    input axil_aresetn
+    input axil_aresetn,
+    input axis_aresetn
 );
 
   wire incr_nb_sync_w;
@@ -72,6 +73,7 @@ module clk_sync_pulse (
       .axil_aclk   (axil_aclk),
       .axis_aclk   (axis_aclk),
       .axil_aresetn(axil_aresetn),
+      .axis_aresetn(axis_aresetn),
 
       // synchronised with axis_aclk
       .master_mode_o       (master_mode_w),
@@ -84,7 +86,6 @@ module clk_sync_pulse (
       .curr_tick_o     (curr_tick_o)
   );
 
-
   // If master mode
   // - incr_nb_sync high every clock tick -> incr_nb_sync_i = master_mode
   // - sync_pulse_o goes high every time (curr_tick == sync_period): overflow, etc is taken care of by regs
@@ -95,11 +96,11 @@ module clk_sync_pulse (
   //    - reset curr_tick
   //    - ignore sync_period?
 
+  // ----------- SLAVE MODE -----------
+  assign incr_nb_sync_w = (~master_mode_w) && sync_pulse_i; // slave_mode: only increment when other master pulses
+
   // ----------- MASTER MODE -----------
   assign incr_curr_tick_w = master_mode_w || incr_nb_sync_w; // Increment every tick, extra logic may be added
   assign sync_pulse_o = master_mode_w && sync_period_detect_w; // master_mode: send out pulse every period
-
-  // ----------- SLAVE MODE -----------
-  assign incr_nb_sync_w = (~master_mode_w) && sync_pulse_i; // slave_mode: only increment when master pulses
 
 endmodule : clk_sync_pulse

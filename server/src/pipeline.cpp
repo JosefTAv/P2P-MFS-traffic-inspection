@@ -4,7 +4,7 @@
 
 int fpga_rx_thread(void *arg){
 	auto *ctx = (struct ForwardingContext *)arg;
-    RTE_LOG(INFO, USER1, "Software forwarder started on lcore %u\n", rte_lcore_id());
+    RTE_LOG(INFO, USER1, "CTX(%u) Software forwarder Rx started on lcore %u\nmbuf addr: %p\n", ctx->ctx_id, rte_lcore_id(), ctx->rx_onic->mbuf_ring);
 
     struct rte_mbuf *mbufs[BURST_SIZE];
 
@@ -46,7 +46,7 @@ int fpga_rx_thread(void *arg){
 
 int fpga_rx_final_thread(void *arg){
     auto *ctx = (struct ForwardingContext *)arg;
-    RTE_LOG(INFO, USER1, "Software forwarder started on lcore %u\n", rte_lcore_id());
+    RTE_LOG(INFO, USER1, "CTX(%u) Software forwarder final Tx started on lcore %u\nmbuf addr: %p\n", ctx->ctx_id, rte_lcore_id(), ctx->rx_onic->mbuf_ring);
 
     struct rte_mbuf *mbufs[BURST_SIZE];
     uint16_t nb_rx = 0;
@@ -110,7 +110,7 @@ bool is_vlan_packet(struct rte_mbuf *mbuf) {
 
 int fpga_tx_thread(void *arg){
 	auto *ctx = (struct ForwardingContext *)arg;
-    RTE_LOG(INFO, USER1, "Tx thread started on lcore %u\n", rte_lcore_id());
+    RTE_LOG(INFO, USER1, "CTX(%u) Software forwarder Tx thread started on lcore %u\nmbuf addr: %p\n", ctx->ctx_id, rte_lcore_id(), ctx->rx_onic->mbuf_ring);
 
     struct rte_mbuf *mbufs[BURST_SIZE];
     unsigned int nb_rx = 0;

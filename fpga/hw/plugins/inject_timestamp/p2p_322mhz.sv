@@ -133,8 +133,8 @@ module p2p_322mhz #(
     sync_detected_combined_r <= sync_detected_combined_meta;
   end
 
-  logic [63:0] nb_sync;
-  logic [63:0] curr_tick;
+  logic [31:0] nb_sync;
+  logic [31:0] curr_tick;
   clk_sync_pulse clk_sync_pulse_inst (
       .s_axil_awvalid(s_axil_awvalid),
       .s_axil_awaddr (s_axil_awaddr),
@@ -193,83 +193,53 @@ module p2p_322mhz #(
           .aresetn(cmac_rstn[i])
       );
 
-      if (i == 0) begin
-        // timestamp cmac tx inject
-        timestamp_inject #(
-            .NUM_AXI_STREAM(1)
-        ) timestamp_inject_tx_inst (
-            .i_axis_tvalid(axis_adap_tx_322mhz_tvalid[i]),
-            .i_axis_tdata (axis_adap_tx_322mhz_tdata[`getvec(512, i)]),
-            .i_axis_tkeep (axis_adap_tx_322mhz_tkeep[`getvec(64, i)]),
-            .i_axis_tlast (axis_adap_tx_322mhz_tlast[i]),
-            .i_axis_tuser (axis_adap_tx_322mhz_tuser_err[i]),
-            .i_axis_tready(axis_adap_tx_322mhz_tready[i]),
+      // timestamp cmac tx inject
+      timestamp_inject #(
+          .NUM_AXI_STREAM(1)
+      ) timestamp_inject_tx_inst (
+          .i_axis_tvalid(axis_adap_tx_322mhz_tvalid[i]),
+          .i_axis_tdata (axis_adap_tx_322mhz_tdata[`getvec(512, i)]),
+          .i_axis_tkeep (axis_adap_tx_322mhz_tkeep[`getvec(64, i)]),
+          .i_axis_tlast (axis_adap_tx_322mhz_tlast[i]),
+          .i_axis_tuser (axis_adap_tx_322mhz_tuser_err[i]),
+          .i_axis_tready(axis_adap_tx_322mhz_tready[i]),
 
-            .o_axis_tdata(axis_inject_cmac_tx_tdata[`getvec(512, i)]),
+          .o_axis_tdata(axis_inject_cmac_tx_tdata[`getvec(512, i)]),
 
-            .i_nb_sync(nb_sync),
-            .i_curr_tick(curr_tick),
-            .o_sync_detected(syncs_detected[2*i]),
+          .i_nb_sync(nb_sync),
+          .i_curr_tick(curr_tick),
+          .o_sync_detected(syncs_detected[2*i]),
 
-            .axil_aclk(axil_aclk),
-            .axis_aclk(cmac_clk[i])
-        );
+          .axil_aclk(axil_aclk),
+          .axis_aclk(cmac_clk[i])
+      );
 
+      axi_stream_register_slice #(
+          .TDATA_W(512),
+          .TUSER_W(1),
+          .MODE   ("full")
+      ) tx_slice_1_inst (
+          .s_axis_tvalid(axis_adap_tx_322mhz_tvalid[i]),
+          .s_axis_tdata (axis_inject_cmac_tx_tdata[`getvec(512, i)]),
+          .s_axis_tkeep (axis_adap_tx_322mhz_tkeep[`getvec(64, i)]),
+          .s_axis_tlast (axis_adap_tx_322mhz_tlast[i]),
+          .s_axis_tid   (0),
+          .s_axis_tdest (0),
+          .s_axis_tuser (axis_adap_tx_322mhz_tuser_err[i]),
+          .s_axis_tready(axis_adap_tx_322mhz_tready[i]),
 
-        axi_stream_register_slice #(
-            .TDATA_W(512),
-            .TUSER_W(1),
-            .MODE   ("full")
-        ) tx_slice_1_inst (
-            .s_axis_tvalid(axis_adap_tx_322mhz_tvalid[i]),
-            .s_axis_tdata (axis_inject_cmac_tx_tdata[`getvec(512, i)]),
-            .s_axis_tkeep (axis_adap_tx_322mhz_tkeep[`getvec(64, i)]),
-            .s_axis_tlast (axis_adap_tx_322mhz_tlast[i]),
-            .s_axis_tid   (0),
-            .s_axis_tdest (0),
-            .s_axis_tuser (axis_adap_tx_322mhz_tuser_err[i]),
-            .s_axis_tready(axis_adap_tx_322mhz_tready[i]),
+          .m_axis_tvalid(m_axis_cmac_tx_tvalid[i]),
+          .m_axis_tdata (m_axis_cmac_tx_tdata[`getvec(512, i)]),
+          .m_axis_tkeep (m_axis_cmac_tx_tkeep[`getvec(64, i)]),
+          .m_axis_tlast (m_axis_cmac_tx_tlast[i]),
+          .m_axis_tid   (),
+          .m_axis_tdest (),
+          .m_axis_tuser (m_axis_cmac_tx_tuser_err[i]),
+          .m_axis_tready(m_axis_cmac_tx_tready[i]),
 
-            .m_axis_tvalid(m_axis_cmac_tx_tvalid[i]),
-            .m_axis_tdata (m_axis_cmac_tx_tdata[`getvec(512, i)]),
-            .m_axis_tkeep (m_axis_cmac_tx_tkeep[`getvec(64, i)]),
-            .m_axis_tlast (m_axis_cmac_tx_tlast[i]),
-            .m_axis_tid   (),
-            .m_axis_tdest (),
-            .m_axis_tuser (m_axis_cmac_tx_tuser_err[i]),
-            .m_axis_tready(m_axis_cmac_tx_tready[i]),
-
-            .aclk   (cmac_clk[i]),
-            .aresetn(cmac_rstn[i])
-        );
-      end else begin
-        axi_stream_register_slice #(
-            .TDATA_W(512),
-            .TUSER_W(1),
-            .MODE   ("full")
-        ) tx_slice_1_inst (
-            .s_axis_tvalid(axis_adap_tx_322mhz_tvalid[i]),
-            .s_axis_tdata (axis_adap_tx_322mhz_tdata[`getvec(512, i)]),
-            .s_axis_tkeep (axis_adap_tx_322mhz_tkeep[`getvec(64, i)]),
-            .s_axis_tlast (axis_adap_tx_322mhz_tlast[i]),
-            .s_axis_tid   (0),
-            .s_axis_tdest (0),
-            .s_axis_tuser (axis_adap_tx_322mhz_tuser_err[i]),
-            .s_axis_tready(axis_adap_tx_322mhz_tready[i]),
-
-            .m_axis_tvalid(m_axis_cmac_tx_tvalid[i]),
-            .m_axis_tdata (m_axis_cmac_tx_tdata[`getvec(512, i)]),
-            .m_axis_tkeep (m_axis_cmac_tx_tkeep[`getvec(64, i)]),
-            .m_axis_tlast (m_axis_cmac_tx_tlast[i]),
-            .m_axis_tid   (),
-            .m_axis_tdest (),
-            .m_axis_tuser (m_axis_cmac_tx_tuser_err[i]),
-            .m_axis_tready(m_axis_cmac_tx_tready[i]),
-
-            .aclk   (cmac_clk[i]),
-            .aresetn(cmac_rstn[i])
-        );
-      end
+          .aclk   (cmac_clk[i]),
+          .aresetn(cmac_rstn[i])
+      );
 
       axi_stream_register_slice #(
           .TDATA_W(512),
@@ -297,82 +267,54 @@ module p2p_322mhz #(
           .aclk   (cmac_clk[i]),
           .aresetn(cmac_rstn[i])
       );
-      if (i == 0) begin
-        // timestamp cmac rx inject
-        timestamp_inject #(
-            .NUM_AXI_STREAM(1)
-        ) timestamp_inject_rx_inst (
-            .i_axis_tvalid(axis_adap_rx_322mhz_tvalid[i]),
-            .i_axis_tdata (axis_adap_rx_322mhz_tdata[`getvec(512, i)]),
-            .i_axis_tkeep (axis_adap_rx_322mhz_tkeep[`getvec(64, i)]),
-            .i_axis_tlast (axis_adap_rx_322mhz_tlast[i]),
-            .i_axis_tuser (axis_adap_rx_322mhz_tuser_err[i]),
-            .i_axis_tready(1'b1),
 
-            .o_axis_tdata(axis_inject_cmac_rx_tdata[`getvec(512, i)]),
+      // timestamp cmac rx inject
+      timestamp_inject #(
+          .NUM_AXI_STREAM(1)
+      ) timestamp_inject_rx_inst (
+          .i_axis_tvalid(axis_adap_rx_322mhz_tvalid[i]),
+          .i_axis_tdata (axis_adap_rx_322mhz_tdata[`getvec(512, i)]),
+          .i_axis_tkeep (axis_adap_rx_322mhz_tkeep[`getvec(64, i)]),
+          .i_axis_tlast (axis_adap_rx_322mhz_tlast[i]),
+          .i_axis_tuser (axis_adap_rx_322mhz_tuser_err[i]),
+          .i_axis_tready(1'b1),
 
-            .i_nb_sync(nb_sync),
-            .i_curr_tick(curr_tick),
-            .o_sync_detected(syncs_detected[2*i+1]),
+          .o_axis_tdata(axis_inject_cmac_rx_tdata[`getvec(512, i)]),
 
-            .axil_aclk(axil_aclk),
-            .axis_aclk(cmac_clk[i])
-        );
+          .i_nb_sync(nb_sync),
+          .i_curr_tick(curr_tick),
+          .o_sync_detected(syncs_detected[2*i+1]),
 
-        axi_stream_register_slice #(
-            .TDATA_W(512),
-            .TUSER_W(1),
-            .MODE   ("full")
-        ) rx_slice_1_inst (
-            .s_axis_tvalid(axis_adap_rx_322mhz_tvalid[i]),
-            .s_axis_tdata (axis_inject_cmac_rx_tdata[`getvec(512, i)]),
-            .s_axis_tkeep (axis_adap_rx_322mhz_tkeep[`getvec(64, i)]),
-            .s_axis_tlast (axis_adap_rx_322mhz_tlast[i]),
-            .s_axis_tid   (0),
-            .s_axis_tdest (0),
-            .s_axis_tuser (axis_adap_rx_322mhz_tuser_err[i]),
-            .s_axis_tready(),
+          .axil_aclk(axil_aclk),
+          .axis_aclk(cmac_clk[i])
+      );
 
-            .m_axis_tvalid(m_axis_adap_rx_322mhz_tvalid[i]),
-            .m_axis_tdata (m_axis_adap_rx_322mhz_tdata[`getvec(512, i)]),
-            .m_axis_tkeep (m_axis_adap_rx_322mhz_tkeep[`getvec(64, i)]),
-            .m_axis_tlast (m_axis_adap_rx_322mhz_tlast[i]),
-            .m_axis_tid   (),
-            .m_axis_tdest (),
-            .m_axis_tuser (m_axis_adap_rx_322mhz_tuser_err[i]),
-            .m_axis_tready(1'b1),
+      axi_stream_register_slice #(
+          .TDATA_W(512),
+          .TUSER_W(1),
+          .MODE   ("full")
+      ) rx_slice_1_inst (
+          .s_axis_tvalid(axis_adap_rx_322mhz_tvalid[i]),
+          .s_axis_tdata (axis_inject_cmac_rx_tdata[`getvec(512, i)]),
+          .s_axis_tkeep (axis_adap_rx_322mhz_tkeep[`getvec(64, i)]),
+          .s_axis_tlast (axis_adap_rx_322mhz_tlast[i]),
+          .s_axis_tid   (0),
+          .s_axis_tdest (0),
+          .s_axis_tuser (axis_adap_rx_322mhz_tuser_err[i]),
+          .s_axis_tready(),
 
-            .aclk   (cmac_clk[i]),
-            .aresetn(cmac_rstn[i])
-        );
-      end else begin
-        axi_stream_register_slice #(
-            .TDATA_W(512),
-            .TUSER_W(1),
-            .MODE   ("full")
-        ) rx_slice_1_inst (
-            .s_axis_tvalid(axis_adap_rx_322mhz_tvalid[i]),
-            .s_axis_tdata (axis_adap_rx_322mhz_tdata[`getvec(512, i)]),
-            .s_axis_tkeep (axis_adap_rx_322mhz_tkeep[`getvec(64, i)]),
-            .s_axis_tlast (axis_adap_rx_322mhz_tlast[i]),
-            .s_axis_tid   (0),
-            .s_axis_tdest (0),
-            .s_axis_tuser (axis_adap_rx_322mhz_tuser_err[i]),
-            .s_axis_tready(),
+          .m_axis_tvalid(m_axis_adap_rx_322mhz_tvalid[i]),
+          .m_axis_tdata (m_axis_adap_rx_322mhz_tdata[`getvec(512, i)]),
+          .m_axis_tkeep (m_axis_adap_rx_322mhz_tkeep[`getvec(64, i)]),
+          .m_axis_tlast (m_axis_adap_rx_322mhz_tlast[i]),
+          .m_axis_tid   (),
+          .m_axis_tdest (),
+          .m_axis_tuser (m_axis_adap_rx_322mhz_tuser_err[i]),
+          .m_axis_tready(1'b1),
 
-            .m_axis_tvalid(m_axis_adap_rx_322mhz_tvalid[i]),
-            .m_axis_tdata (m_axis_adap_rx_322mhz_tdata[`getvec(512, i)]),
-            .m_axis_tkeep (m_axis_adap_rx_322mhz_tkeep[`getvec(64, i)]),
-            .m_axis_tlast (m_axis_adap_rx_322mhz_tlast[i]),
-            .m_axis_tid   (),
-            .m_axis_tdest (),
-            .m_axis_tuser (m_axis_adap_rx_322mhz_tuser_err[i]),
-            .m_axis_tready(1'b1),
-
-            .aclk   (cmac_clk[i]),
-            .aresetn(cmac_rstn[i])
-        );
-      end
+          .aclk   (cmac_clk[i]),
+          .aresetn(cmac_rstn[i])
+      );
     end : cmac_gen_block
   endgenerate
 

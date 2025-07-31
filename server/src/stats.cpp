@@ -7,7 +7,7 @@ int StatsLog_run_producer(void *statslog) {
 }
 
 int StatsLog::run_stats_producer(){
-    RTE_LOG(INFO, USER1, "Stats producer started on lcore %u\n", rte_lcore_id());
+    RTE_LOG(INFO, USER1, "CTX(%d)Stats producer started on lcore %u\n", ctx->ctx_id, rte_lcore_id());
 
     // convert FPGA port to DPDK port id
     OnicPort rx_port = (ctx->rx_onic->get_ports()[ctx->rx_port]);
@@ -30,7 +30,7 @@ int StatsLog::run_stats_producer(){
 
     kafka_data.reserve(1024);
     kafka_message.reserve(2048);
-
+    
     while (!rte_atomic32_read(&ctx->stop_flag)) {
         // Get rx stats
         ret = rte_eth_stats_get(rx_port_id, &rx_stats);
@@ -52,11 +52,9 @@ int StatsLog::run_stats_producer(){
                         rte_stats_to_string(tx_stats, "(T)") + "," + \
                         "DELTA_NS=" + std::to_string(delta_ns) + "\n";
         produce_kafka_message(kafka_message);
-
         // produce latency stats
         extract_then_produce_latency_packets(ctx);
-        
-        rte_delay_ms(3000);
+        rte_delay_ms(1000);
     }
     return 0;
 }

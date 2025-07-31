@@ -14,8 +14,8 @@ module timestamp_inject #(
     // AXI-stream output
     output logic [512*NUM_AXI_STREAM-1:0] o_axis_tdata,
 
-    input logic [63:0] i_nb_sync,
-    input logic [63:0] i_curr_tick,
+    input logic [31:0] i_nb_sync,
+    input logic [31:0] i_curr_tick,
     output logic o_sync_detected,
 
     input axil_aclk,
@@ -25,7 +25,7 @@ module timestamp_inject #(
   localparam BYTE = 8;
 
   localparam PAYLOAD_OFFSET = (6+6+2+2+2)*BYTE; // dest mac + src mac + packet type + VLAN + Ethertype
-  localparam TIMESTAMP_SIZE = 32 + 64;  // nb_sync + curr_tick
+  localparam TIMESTAMP_SIZE = 32 + 32;  // nb_sync + curr_tick
   localparam EMPTY_TIMESTAMP = 32'hDEADBEEF;
 
   // ------------------ Inject timestamp at next available offset if vlan detected ------------------ //

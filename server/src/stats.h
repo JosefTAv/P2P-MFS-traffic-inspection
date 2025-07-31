@@ -111,6 +111,7 @@ private:
     void extract_then_produce_latency_packets(const ForwardingContext *ctx);
     void produce_latency_message(std::string latency);
 public:
+    StatsLog() = default;
     StatsLog(const ForwardingContext *ctx, const char *topic) : ctx(ctx), topic(topic) {
         create_kafka_topic(topic);
 

@@ -29,7 +29,8 @@ unsigned int launch_software_forwarder(unsigned int prev_lcore_id, ForwardingCon
 void produce_kafka();
 void produce_kafka(const char *topic, const char *payload, size_t payload_len, const char *key, size_t key_len);
 
-struct ForwardingContext ctx;
+#define NB_FORWARDS (4)
+struct ForwardingContext ctx[NB_FORWARDS];
 
 int main(int argc, char* argv[]){
 	std::signal(SIGINT, force_exit_handler);  // Catch Ctrl+C
@@ -94,10 +95,28 @@ int main(int argc, char* argv[]){
     }
 
 
-    ctx = ForwardingContext{
-        .rx_onic = &onic1,
+    ctx[0] = ForwardingContext{
+        .ctx_id = 0,
+        .rx_onic = &onic0,
         .tx_onic = &onic0,
         .rx_port = 0,
+        .tx_port = 1,
+
+        .rx_Qs = {0, -1,-1},
+        .tx_Qs = {0, -1,-1},
+        .nb_rx_Qs = 1,
+        .nb_tx_Qs = 1,
+        
+        .stats_ring = stats_ring,
+
+        .stop_flag = RTE_ATOMIC32_INIT(0),
+    };
+
+    ctx[1] = ForwardingContext{
+        .ctx_id = 1,
+        .rx_onic = &onic0,
+        .tx_onic = &onic0,
+        .rx_port = 1,
         .tx_port = 0,
 
         .rx_Qs = {0, -1,-1},
@@ -109,25 +128,66 @@ int main(int argc, char* argv[]){
 
         .stop_flag = RTE_ATOMIC32_INIT(0),
     };
-    ctx.print_schema();
+
+    ctx[2] = ForwardingContext{
+        .ctx_id = 2,
+        .rx_onic = &onic1,
+        .tx_onic = &onic1,
+        .rx_port = 0,
+        .tx_port = 1,
+
+        .rx_Qs = {0, -1,-1},
+        .tx_Qs = {0, -1,-1},
+        .nb_rx_Qs = 1,
+        .nb_tx_Qs = 1,
+        
+        .stats_ring = stats_ring,
+
+        .stop_flag = RTE_ATOMIC32_INIT(0),
+    };
+
+    ctx[3] = ForwardingContext{
+        .ctx_id = 3,
+        .rx_onic = &onic1,
+        .tx_onic = &onic1,
+        .rx_port = 1,
+        .tx_port = 0,
+
+        .rx_Qs = {0, -1,-1},
+        .tx_Qs = {0, -1,-1},
+        .nb_rx_Qs = 1,
+        .nb_tx_Qs = 1,
+        
+        .stats_ring = stats_ring,
+
+        .stop_flag = RTE_ATOMIC32_INIT(0),
+    };
+    
 	/******************************************************************************************************************
 											Begin software forwarders
 	******************************************************************************************************************/
-
-	unsigned lcore_id = rte_get_next_lcore(-1, 1, 0);
-    lcore_id = launch_software_forwarder(lcore_id, ctx);
+    unsigned lcore_id = rte_get_next_lcore(-1, 1, 0);
+    for(auto & i : ctx){
+        i.print_schema();
+        lcore_id = launch_software_forwarder(lcore_id, i);
+    }
     // rte_eal_remote_launch(software_forwarder_thread, &ctx, lcore_id);
 
     /******************************************************************************************************************
 											Begin stats producers
 	******************************************************************************************************************/
-    StatsLog stats(&ctx, "Ports");
-    lcore_id = rte_get_next_lcore(lcore_id, 1, 0);
-    rte_eal_remote_launch(StatsLog_run_producer, &stats, lcore_id);
+    std::vector<StatsLog> stats;
+    stats.reserve(NB_FORWARDS);
+    for (int i = 0; i < NB_FORWARDS; i++) {
+        // std::string topic_str = "Ports" + std::to_string(i);
+        stats.emplace_back(&ctx[i], "Ports");
+        lcore_id = rte_get_next_lcore(lcore_id, 1, 0);
+        rte_eal_remote_launch(StatsLog_run_producer, &stats[i], lcore_id);
+    }
 
-    StatsLog cmac_stats(&ctx, "CMACs");
-    lcore_id = rte_get_next_lcore(lcore_id, 1, 0);
-    rte_eal_remote_launch(StatsLog_cmac_producer, &cmac_stats, lcore_id);
+    // StatsLog cmac_stats(&ctx, "CMACs");
+    // lcore_id = rte_get_next_lcore(lcore_id, 1, 0);
+    // rte_eal_remote_launch(StatsLog_cmac_producer, &cmac_stats, lcore_id);
 
     // // Main thread: Print stats every second
 	// uint32_t old_rx_dpdk = 0;
@@ -152,8 +212,11 @@ int main(int argc, char* argv[]){
     //     sleep(1);
     // }
 
+    while (!sigkill);
+
     // Cleanup
-    rte_atomic32_set(&ctx.stop_flag, 1);
+    for(auto & i : ctx)
+        rte_atomic32_set(&i.stop_flag, 1);
 
     unsigned nb_lcores = rte_lcore_count();  // Get the total number of cores
     for (lcore_id = 1; lcore_id < nb_lcores; lcore_id++) {  // Skip lcore 0 (main core)
@@ -174,10 +237,10 @@ int main(int argc, char* argv[]){
 }
 
 unsigned int launch_software_forwarder(unsigned int prev_lcore_id, ForwardingContext &ctx){
-    prev_lcore_id = rte_get_next_lcore(-1, 1, 0);
+    prev_lcore_id = rte_get_next_lcore(prev_lcore_id, 1, 0);
     rte_eal_remote_launch(fpga_rx_thread, &ctx, prev_lcore_id);
 
-    prev_lcore_id = rte_get_next_lcore(-1, 1, 0);
+    prev_lcore_id = rte_get_next_lcore(prev_lcore_id, 1, 0);
     rte_eal_remote_launch(fpga_tx_thread, &ctx, prev_lcore_id);
 
     return prev_lcore_id;

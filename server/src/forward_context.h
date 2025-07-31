@@ -10,6 +10,7 @@
 #include "onic.h"
 
 struct ForwardingContext {
+    int ctx_id;
     const Onic* rx_onic;
     const Onic* tx_onic;
 	int rx_port;
@@ -26,10 +27,12 @@ struct ForwardingContext {
     rte_atomic32_t stop_flag;
 
     void print_schema() {
-        std::cout   << "Forwarding " << to_string(rx_onic->get_ports()[rx_port].get_bdf())
+        std::cout   << "CTX(" << ctx_id << "): " 
+                    << std::endl
+                    << "\t Forwarding " << to_string(rx_onic->get_ports()[rx_port].get_bdf())
                     << " --------> " << to_string(tx_onic->get_ports()[tx_port].get_bdf())
                     << std::endl
-                    << "rx_port " << rx_port << " --------> " << "tx_port " << tx_port 
+                    << "\t rx_port " << rx_port << "\t --------> " << "tx_port " << tx_port 
                     << std::endl;
     }
 };

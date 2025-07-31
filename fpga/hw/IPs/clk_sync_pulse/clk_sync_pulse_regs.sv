@@ -29,7 +29,7 @@ typedef enum logic {
 
 module clk_sync_pulse_regs #(
     parameter mode_t DEFAULT_MODE = SLAVE,  // in master mode by default
-    parameter int DEFAULT_PERIOD = 64'd322  //Nb ticks per period according to axis_clk
+    parameter int DEFAULT_PERIOD = 31'd322  //Nb ticks per period according to axis_clk
 ) (
     input         s_axil_awvalid,
     input  [31:0] s_axil_awaddr,
@@ -60,8 +60,8 @@ module clk_sync_pulse_regs #(
     // synchronised with axis_aclk
     input         incr_nb_sync_i,
     input         incr_curr_tick_i,
-    output [63:0] nb_sync_o,
-    output [63:0] curr_tick_o
+    output [31:0] nb_sync_o,
+    output [31:0] curr_tick_o
 );
 
   localparam C_ADDR_W = 12;
@@ -80,9 +80,9 @@ module clk_sync_pulse_regs #(
 
 
   mode_t                reg_master_mode;
-  reg    [        63:0] reg_sync_period;
-  reg    [        63:0] reg_nb_sync;
-  reg    [        63:0] reg_curr_tick;
+  reg    [        31:0] reg_sync_period;
+  reg    [        31:0] reg_nb_sync;
+  reg    [        31:0] reg_curr_tick;
 
   wire                  sync_period_detect_w;
   wire                  master_sync_period_detect_w;
@@ -130,60 +130,67 @@ module clk_sync_pulse_regs #(
   // ---------------------------------------------------
   // Axil Read logic
   // ---------------------------------------------------
-  always_ff @(posedge axil_aclk) begin
-    if (~axil_aresetn) begin
-      reg_dout <= 0;
-    end else if (reg_en && ~reg_we) begin
-      case (reg_addr)
-        MASTER_MODE: begin
-          reg_dout <= {31'b0, reg_master_mode};
-        end
-        SYNC_PERIOD_ADDR_UPPER: begin
-          reg_dout <= reg_sync_period[63:32];
-        end
-        SYNC_PERIOD_ADDR_LOWER: begin
-          reg_dout <= reg_sync_period[31:0];
-        end
-        NB_SYNC_UPPER: begin
-          reg_dout <= reg_nb_sync[63:32];
-        end
-        NB_SYNC_LOWER: begin
-          reg_dout <= reg_nb_sync[31:0];
-        end
-        CURR_TICK_UPPER: begin
-          reg_dout <= reg_curr_tick[63:32];
-        end
-        CURR_TICK_LOWER: begin
-          reg_dout <= reg_curr_tick[31:0];
-        end
-        default: begin
-          reg_dout <= 32'hDEADBEEF;
-        end
-      endcase
-    end
-  end
+  // always_ff @(posedge axil_aclk) begin
+  //   if (~axil_aresetn) begin
+  //     reg_dout <= 0;
+  //   end else if (reg_en && ~reg_we) begin
+  //     case (reg_addr)
+  //       MASTER_MODE: begin
+  //         reg_dout <= {31'b0, reg_master_mode};
+  //       end
+  //       // SYNC_PERIOD_ADDR_UPPER: begin
+  //       //   reg_dout <= reg_sync_period[63:32];
+  //       // end
+  //       SYNC_PERIOD_ADDR_LOWER: begin
+  //         reg_dout <= reg_sync_period[31:0];
+  //       end
+  //       // NB_SYNC_UPPER: begin
+  //       //   reg_dout <= reg_nb_sync[63:32];
+  //       // end
+  //       NB_SYNC_LOWER: begin
+  //         reg_dout <= reg_nb_sync[31:0];
+  //       end
+  //       // CURR_TICK_UPPER: begin
+  //       //   reg_dout <= reg_curr_tick[63:32];
+  //       // end
+  //       CURR_TICK_LOWER: begin
+  //         reg_dout <= reg_curr_tick[31:0];
+  //       end
+  //       default: begin
+  //         reg_dout <= 32'hDEADBEEF;
+  //       end
+  //     endcase
+  //   end
+  // end
 
-  // ---------------------------------------------------
-  // Axil Write logic
-  // ---------------------------------------------------
-  always_ff @(posedge axil_aclk) begin
-    if (~axil_aresetn) begin
+  // // ---------------------------------------------------
+  // // Axil Write logic
+  // // ---------------------------------------------------
+  // always_ff @(posedge axil_aclk) begin
+  //   if (~axil_aresetn) begin
+  //     reg_master_mode <= DEFAULT_MODE;
+  //     reg_sync_period <= DEFAULT_PERIOD - 1;
+  //   end else if (reg_en && reg_we) begin
+  //     case (reg_addr)
+  //       MASTER_MODE: begin
+  //         reg_master_mode <= mode_t'(reg_din[0]);
+  //       end
+  //       // SYNC_PERIOD_ADDR_UPPER: begin
+  //       //   reg_sync_period[63:32] <= reg_din;
+  //       // end
+  //       SYNC_PERIOD_ADDR_LOWER: begin
+  //         reg_sync_period[31:0] <= reg_din;
+  //       end
+  //       default: begin
+  //       end
+  //     endcase
+  //   end
+  // end
+
+  always_ff @(posedge axis_aclk) begin
+    if (~axis_aresetn) begin
       reg_master_mode <= DEFAULT_MODE;
       reg_sync_period <= DEFAULT_PERIOD - 1;
-    end else if (reg_en && reg_we) begin
-      case (reg_addr)
-        MASTER_MODE: begin
-          reg_master_mode <= mode_t'(reg_din[0]);
-        end
-        SYNC_PERIOD_ADDR_UPPER: begin
-          reg_sync_period[63:32] <= reg_din;
-        end
-        SYNC_PERIOD_ADDR_LOWER: begin
-          reg_sync_period[31:0] <= reg_din;
-        end
-        default: begin
-        end
-      endcase
     end
   end
 
@@ -210,25 +217,30 @@ module clk_sync_pulse_regs #(
     end
   end
 
-  // Sync reg_sync_period from axil to axis domain
-  reg [63:0] reg_sync_period_meta;
-  reg [63:0] reg_sync_period_sync;
+  // Sync reg from axil to axis domain
+  reg [31:0] reg_sync_period_meta;
+  reg [31:0] reg_sync_period_sync;
+  reg [31:0] reg_master_mode_meta;
+  reg [31:0] reg_master_mode_sync;
   always_ff @(posedge axis_aclk) begin
     reg_sync_period_meta <= reg_sync_period;
     reg_sync_period_sync <= reg_sync_period_meta;
+
+    reg_master_mode_meta <= reg_master_mode;
+    reg_master_mode_sync <= reg_master_mode_meta;
   end
 
   // detecting reaching period as master
   reg master_sync_period_detect_r;
   always_ff @(posedge axis_aclk) begin  // register to shorten paths
-    master_sync_period_detect_r <= reg_master_mode && ~|(reg_curr_tick ^ reg_sync_period_sync);
+    master_sync_period_detect_r <= reg_master_mode_sync && ~|(reg_curr_tick ^ reg_sync_period_sync);
   end
 
   assign master_sync_period_detect_w = master_sync_period_detect_r;
   assign sync_period_detect_w = master_sync_period_detect_w && incr_curr_tick_i;
 
   // connect regs to outputs
-  assign master_mode_o = reg_master_mode;
+  assign master_mode_o = reg_master_mode_sync;
   assign sync_period_detect_o = sync_period_detect_w;
   assign nb_sync_o = reg_nb_sync;
   assign curr_tick_o = reg_curr_tick;
