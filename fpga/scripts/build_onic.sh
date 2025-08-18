@@ -39,4 +39,8 @@ done
 # 2. Build onic
 # ========================
 cd "$ONIC_SCRIPT_DIR" || exit 1
-vivado -mode batch -source build.tcl -tclargs -board au55c -tag "$TAG" -build_dir "$BUILD_DIR" -user_plugin "$PLUGIN_DIR" -num_phys_func 2 -num_cmac_port 2 -max_pkt_len 9600 -impl 1 -jobs 32
+if [ -n "$PLUGIN_DIR" ]; then
+  vivado -mode batch -source build.tcl -tclargs -board au55c -tag "$TAG" -build_dir "$BUILD_DIR" -user_plugin "$PLUGIN_DIR" -num_phys_func 2 -num_cmac_port 2 -max_pkt_len 9600 -impl 1 -jobs 32
+else
+  vivado -mode batch -source build.tcl -tclargs -board au55c -tag "$TAG" -build_dir "$BUILD_DIR" -num_phys_func 2 -num_cmac_port 2 -max_pkt_len 9600 -impl 1 -jobs 32
+fi

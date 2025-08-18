@@ -99,20 +99,25 @@ struct PortInfo {
 };
 
 class OnicPort { // this is really a qdma port...
-    private:
+    public:
         // Attributes
         PortInfo pinfo;
         int port_id;
         uint32_t b, d, f;
 
-    public:
+    // public:
         // Constructors/etc
         OnicPort(){};
         OnicPort(PortInfo pinfo, int port_id)
             : pinfo(pinfo), port_id(port_id)
             {
                 rte_spinlock_init(&pinfo.port_update_lock);
-                port_init();
+                int ret = port_init();
+                if (ret < 0) {
+                    std::cerr << "Error initializing port " << port_id << std::endl;
+                } else {
+                    std::cout << "Port " << port_id << " initialized successfully" << std::endl;
+                }
                 // int rte_pmd_qdma_get_device_capabilities(int port_id,
                 //     struct rte_pmd_qdma_dev_attributes *dev_attr) //check that setup worked
             }

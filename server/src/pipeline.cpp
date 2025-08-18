@@ -11,9 +11,14 @@ int fpga_rx_thread(void *arg){
     // convert FPGA port to DPDK port id
     uint16_t rx_port_id = (ctx->rx_onic->get_ports()[ctx->rx_port]).get_port_id();
     uint16_t tx_port_id = (ctx->tx_onic->get_ports()[ctx->tx_port]).get_port_id();
-
     // track current Q
     uint16_t curr_Q = 0;
+
+    RTE_LOG(INFO, USER1, "rx_port_id=%u\n", rx_port_id);
+    struct rte_eth_dev_info di;
+    rte_eth_dev_info_get(rx_port_id, &di);
+    RTE_LOG(INFO, USER1, "driver=%s nb_rx_queues=%u\n",
+            di.driver_name ? di.driver_name : "?", di.nb_rx_queues);
 
     while (!rte_atomic32_read(&ctx->stop_flag)) {
 
@@ -24,12 +29,16 @@ int fpga_rx_thread(void *arg){
         // }
 
         // Receive packets
-        uint16_t next_Q = curr_Q % ctx->nb_rx_Qs; //round-robin Q select
-        int32_t nb_rx = rte_eth_rx_burst(rx_port_id, ctx->rx_Qs[next_Q], mbufs, BURST_SIZE);
+        uint16_t next_Q_idx = curr_Q % ctx->nb_rx_Qs; //round-robin Q select
+        int32_t nb_rx = rte_eth_rx_burst(rx_port_id, 0, mbufs, BURST_SIZE);
+        // rte_pmd_qdma_qstats(rx_port_id, next_Q);
         if (unlikely(nb_rx == 0)) {
             rte_pause();
+            // printf("rx(%u) Q(%u) tx(%u)\n", rx_port_id, ctx->rx_Qs[next_Q_idx], tx_port_id);
             continue;
         }
+        // rte_pmd_qdma_qstats(rx_port_id, ctx->rx_Qs[next_Q_idx]);
+        // RTE_LOG(INFO, USER1, "CTX(%u) %d packets received on Q %d\n", ctx->ctx_id, nb_rx, ctx->rx_Qs[next_Q_idx]);
         curr_Q++;
 
         // Enqueue mbufs for tx
@@ -41,6 +50,7 @@ int fpga_rx_thread(void *arg){
         }
 
     }
+    RTE_LOG(INFO, USER1, "CTX(%u) Software forwarder Rx stopped on lcore %u\n", ctx->ctx_id, rte_lcore_id());
     return 0;
 }
 
@@ -127,10 +137,13 @@ int fpga_tx_thread(void *arg){
             rte_pause();
             continue;
         }
-
+        // printf("Sending 
         // Transmit packets
-        uint16_t next_Q = curr_Q % ctx->nb_tx_Qs; //round-robin Q select
-        int32_t nb_tx = rte_eth_tx_burst(tx_port_id, ctx->tx_Qs[0], mbufs, nb_rx);
+        // rte_pktmbuf_dump(stdout, mbufs[0], mbufs[0]->pkt_len);
+        struct rte_mempool *mp = rte_mempool_lookup(ctx->tx_onic->get_ports()[ctx->tx_port].pinfo.mem_pool);
+        printf("dst mempool available: %u\n", rte_mempool_avail_count(mp));
+        uint16_t next_Q_idx = curr_Q % ctx->nb_tx_Qs; //round-robin Q select
+        int32_t nb_tx = rte_eth_tx_burst(tx_port_id, ctx->tx_Qs[next_Q_idx], mbufs, nb_rx);
         curr_Q++;
 
         // Free any untransmitted packets
@@ -138,6 +151,7 @@ int fpga_tx_thread(void *arg){
             for (uint16_t i = nb_tx; i < nb_rx; i++) {
                 rte_pktmbuf_free(mbufs[i]);
             }
+            printf("Not sent %u packets on tx_port(%u) on Q(%u)\n", nb_rx, tx_port_id, ctx->tx_Qs[0]);
         }
         
     }

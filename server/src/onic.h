@@ -33,7 +33,27 @@ struct CmacStats{
     uint32_t rx_total_bytes = 0;
     uint32_t rx_total_good_bytes = 0;
 
-    void print() const{
+    uint32_t rx_pkt_65_127 = 0;
+    uint32_t rx_pkt_large = 0;
+    uint32_t rx_pkt_small = 0;
+    uint32_t rx_undersize = 0;
+    uint32_t rx_frag = 0;
+    uint32_t rx_oversize = 0;
+    uint32_t rx_toolong = 0;
+    uint32_t rx_jabber = 0;
+    uint32_t rx_bad_fcs = 0;
+    uint32_t rx_pkt_bad_fcs = 0;
+    uint32_t rx_stomped_fcs = 0;
+    uint32_t rx_unicast = 0;
+    uint32_t rx_multicast = 0;
+    uint32_t rx_broadcast = 0;
+    uint32_t rx_vlan = 0;
+    uint32_t rx_pause = 0;
+    uint32_t rx_user_pause = 0;
+    uint32_t rx_in_range_err = 0;
+    uint32_t rx_truncated = 0;
+
+    void print(bool debug=false) const{
         #define PRINT_FIELD(field) \
             printf("(CMAC) %-25s %10u\n", #field, field);
 
@@ -46,9 +66,30 @@ struct CmacStats{
         PRINT_FIELD(rx_total_good_pkts);
         PRINT_FIELD(rx_total_bytes);
         PRINT_FIELD(rx_total_good_bytes);
-        printf("\n");
 
+        if(debug){
+            PRINT_FIELD(rx_pkt_65_127);
+            PRINT_FIELD(rx_pkt_large);
+            PRINT_FIELD(rx_pkt_small);
+            PRINT_FIELD(rx_undersize);
+            PRINT_FIELD(rx_frag);
+            PRINT_FIELD(rx_oversize);
+            PRINT_FIELD(rx_toolong);
+            PRINT_FIELD(rx_jabber);
+            PRINT_FIELD(rx_bad_fcs);
+            PRINT_FIELD(rx_pkt_bad_fcs);
+            PRINT_FIELD(rx_stomped_fcs);
+            PRINT_FIELD(rx_unicast);
+            PRINT_FIELD(rx_multicast);
+            PRINT_FIELD(rx_broadcast);
+            PRINT_FIELD(rx_vlan);
+            PRINT_FIELD(rx_pause);
+            PRINT_FIELD(rx_user_pause);
+            PRINT_FIELD(rx_in_range_err);
+            PRINT_FIELD(rx_truncated);
+        }
         #undef PRINT_FIELD  // Clean up macro after use
+        printf("\n");
     };
 
     std::string to_string(std::string tag="") const {
@@ -114,7 +155,9 @@ class Onic {
         // High level functions
         int init_hardware();
         int enable_cmac(int cmac_id);
-        CmacStats get_cmac_stats(int cmac_id) const;
+        CmacStats get_cmac_stats(int cmac_id, bool debug=false) const;
+        void print_packet_adaptor_stats(int cmac_id);
+        void get_cmac_debug_stats(int cmac_id, CmacStats &stats) const;
 
         std::string ring_name;
 
@@ -144,7 +187,8 @@ class Onic {
             init_hardware();
         };
         ~Onic(){
-
+            onic_log(RTE_LOG_INFO, "Reset Onic\n");
+            write_reg(SYSCFG_OFFSET_SYSTEM_RESET, 0x1); // Global reset
          };
 
         // Base functions

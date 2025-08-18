@@ -67,9 +67,10 @@ int main(int argc, char* argv[]){
 														Init Onics
 	******************************************************************************************************************/
 
+    unsigned int base_q = 0;
 	PortInfo pinfos[] = {
-		{0, 2, 1024, 2, 4096, 0, 2},
-		{0, 2, 1024, 2, 4096, 0, 2}
+		{base_q++, 2, 1024, 2, 4096, 0, 2},
+		{base_q++, 2, 1024, 2, 4096, 0, 2}
 	};
 	int onic0_port_ids[] = {0, 1};
 	int onic1_port_ids[] = {2, 3};
@@ -167,52 +168,57 @@ int main(int argc, char* argv[]){
 											Begin software forwarders
 	******************************************************************************************************************/
     unsigned lcore_id = rte_get_next_lcore(-1, 1, 0);
-    for(auto & i : ctx){
-        i.print_schema();
-        lcore_id = launch_software_forwarder(lcore_id, i);
-    }
+    // for(auto & i : ctx){
+    //     lcore_id = launch_software_forwarder(lcore_id, i);
+    //     break; // todo: here
+    // }
     // rte_eal_remote_launch(software_forwarder_thread, &ctx, lcore_id);
 
+    lcore_id = launch_software_forwarder(lcore_id, ctx[3]);    
     /******************************************************************************************************************
 											Begin stats producers
 	******************************************************************************************************************/
-    std::vector<StatsLog> stats;
-    stats.reserve(NB_FORWARDS);
-    for (int i = 0; i < NB_FORWARDS; i++) {
-        // std::string topic_str = "Ports" + std::to_string(i);
-        stats.emplace_back(&ctx[i], "Ports");
-        lcore_id = rte_get_next_lcore(lcore_id, 1, 0);
-        rte_eal_remote_launch(StatsLog_run_producer, &stats[i], lcore_id);
-    }
-
-    // StatsLog cmac_stats(&ctx, "CMACs");
-    // lcore_id = rte_get_next_lcore(lcore_id, 1, 0);
-    // rte_eal_remote_launch(StatsLog_cmac_producer, &cmac_stats, lcore_id);
-
-    // // Main thread: Print stats every second
-	// uint32_t old_rx_dpdk = 0;
-	// uint32_t old_tx_dpdk = 0;
-
-	// CmacStats oldStats;
-    // CmacStats accumStats;
-
-    // while (!sigkill) {
-    //     CmacStats stats0 = onic0.get_cmac_stats(0);
-	// 	CmacStats stats1 = onic0.get_cmac_stats(1);
-
-	// 	if(old_rx_dpdk != rte_atomic32_read(&ctx.rx_count) || old_tx_dpdk != rte_atomic32_read(&ctx.tx_count)){
-    //     	printf("(dpdk) Packets received: %d\n", rte_atomic32_read(&ctx.rx_count));
-	// 		old_rx_dpdk = rte_atomic32_read(&ctx.rx_count);
-
-	// 		printf("(dpdk) Packets sent: %d\n", rte_atomic32_read(&ctx.tx_count));
-	// 		old_tx_dpdk = rte_atomic32_read(&ctx.tx_count);
-
-	// 	}
-
-    //     sleep(1);
+    // std::vector<StatsLog> stats;
+    // stats.reserve(NB_FORWARDS);
+    // for (int i = 0; i < NB_FORWARDS; i++) {
+    //     // std::string topic_str = "Ports" + std::to_string(i);
+    //     stats.emplace_back(&ctx[i], "Ports");
+    //     lcore_id = rte_get_next_lcore(lcore_id, 1, 0);
+    //     rte_eal_remote_launch(StatsLog_run_producer, &stats[i], lcore_id);
     // }
 
-    while (!sigkill);
+	CmacStats oldStats_0;
+    CmacStats oldStats_1;
+    // CmacStats accumStats;
+
+    while (!sigkill) {
+        CmacStats stats0 = onic0.get_cmac_stats(0);
+		CmacStats stats1 = onic1.get_cmac_stats(1);
+        
+		if(stats0.rx_total_pkts != oldStats_0.rx_total_pkts || stats1.rx_total_pkts != oldStats_1.rx_total_pkts){
+            if(stats0.rx_total_pkts != 0 || stats1.rx_total_pkts != 0){
+                oldStats_0 = stats0;
+                oldStats_1 = stats1;
+                // uint16_t rx_port_id = (ctx[0].rx_onic->get_ports()[ctx[0].rx_port]).get_port_id();
+                uint16_t rx_port_id = 1;
+                // rte_pmd_qdma_qstats(0, 0);
+                // rte_pmd_qdma_qstats(rx_port_id, 0);
+            
+                // rte_pmd_qdma_dbg_regdump(0);
+
+                onic0.print_packet_adaptor_stats(0);
+                stats0.print();
+                onic1.print_packet_adaptor_stats(1);
+                stats1.print();
+                printf("********************************************************** ");
+                // rte_pmd_qdma_dbg_regdump(1);
+            }
+		}
+
+        sleep(1);
+    }
+
+    // while (!sigkill);
 
     // Cleanup
     for(auto & i : ctx)
@@ -237,6 +243,7 @@ int main(int argc, char* argv[]){
 }
 
 unsigned int launch_software_forwarder(unsigned int prev_lcore_id, ForwardingContext &ctx){
+    ctx.print_schema();
     prev_lcore_id = rte_get_next_lcore(prev_lcore_id, 1, 0);
     rte_eal_remote_launch(fpga_rx_thread, &ctx, prev_lcore_id);
 

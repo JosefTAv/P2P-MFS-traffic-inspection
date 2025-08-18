@@ -71,5 +71,5 @@ rebind_driver() {
 
 modprobe_vfio
 unbind_onic $@
-# setup_onic $1 #: not needed anymore, done in app on init
+setup_onic $1 #: not needed anymore, done in app on init
 rebind_driver $@

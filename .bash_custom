@@ -32,3 +32,4 @@ alias testpmd="$P2P_DIR/server/tools/dpdk-stable/build/app/dpdk-testpmd --file-p
 
 # Quick actions
 alias make_onic='pushd $P2P_DIR/server/src && make clean && make RTE_SDK=`pwd`/../.. RTE_TARGET=build && popd'
+alias make_n_run_onic='make_onic && bash run_onicapp.sh'
