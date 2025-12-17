@@ -4,22 +4,17 @@ This directory contains the hardware design source code and build scripts for th
 
 ## Developer Note: `.bash_custom`
 
-It is highly recommended to source the `.bash_custom` file in the repository root. This adds the `fpga/scripts` directory to your `PATH`, allowing you to run build commands from anywhere.
-
-```bash
-source /path/to/repo/.bash_custom
-```
+It is assumed .bash_custom is sourced in .bashrc.
 
 ## Directory Structure
 
 *   **`scripts/`**: Automation scripts (exported to PATH).
 *   **`hw/`**: Hardware source files.
-*   **`tools/`**: Contains the `open-nic-shell` submodule and other utilities.
+*   **`tools/`**: Contains the `open-nic-shell` submodule and patches.
 
 ## Prerequisites
 
 *   **Xilinx Vivado**: Checked and sourced automatically if you use `.bash_custom`.
-*   **Git**: For submodule management.
 
 ## Build Instructions
 
@@ -51,4 +46,4 @@ build_onic.sh --tag=timestamp_build --plugin_dir=../hw/plugins/inject_timestamp
 
 ## Output
 
-After a successful build, the generated bitstream (`.bit`) and hardware definition files (`.xsa`) will be located in the specified build directory (typically `hw/`).
+After a successful build, the generated bitstream (`.bit`) and hardware definition files (`.xsa`) will be located in the specified build directory (typically `hw/onic_au55c_build_<tag>`).

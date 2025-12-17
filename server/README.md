@@ -4,7 +4,7 @@ This directory contains the host-side software application that interfaces with 
 
 ## Developer Note: `.bash_custom`
 
-It is assumed .bash_custom is source in the .bashrc
+It is assumed .bash_custom is sourced in the .bashrc.
 
 ## Architecture Overview
 
